@@ -1,0 +1,201 @@
+import { UserCarsService } from './user-cars.service';
+import { RegisterCarDto, UpdateCarDto } from './dto';
+export declare class UserCarsController {
+    private userCarsService;
+    constructor(userCarsService: UserCarsService);
+    registerCar(userId: string, dto: RegisterCarDto): Promise<{
+        catalog: {
+            bodyType: string | null;
+            fuelType: string | null;
+            transmission: string | null;
+            engineCapacity: string | null;
+            seatingCapacity: number | null;
+            basePrice: import("@prisma/client-runtime-utils").Decimal;
+            features: import("@prisma/client/runtime/client").JsonValue;
+        } | null;
+    } & {
+        id: string;
+        userId: string;
+        updatedAt: Date;
+        year: number;
+        isActive: boolean;
+        manufacturer: string;
+        modelName: string;
+        variant: string | null;
+        catalogId: string | null;
+        registrationNumber: string;
+        vinNumber: string | null;
+        color: string | null;
+        mileage: number | null;
+        condition: import("@prisma/client").$Enums.CarCondition;
+        purchaseDate: Date | null;
+        purchasePrice: import("@prisma/client-runtime-utils").Decimal | null;
+        isForResale: boolean;
+        registeredAt: Date;
+    }>;
+    findAllMyCars(userId: string): Promise<({
+        _count: {
+            listings: number;
+            rentals: number;
+        };
+        images: {
+            id: string;
+            imageUrl: string;
+            uploadedAt: Date;
+            isCurrent: boolean;
+            version: number;
+            imageCategory: import("@prisma/client").$Enums.ImageCategory;
+            carId: string;
+            isPermanent: boolean;
+            thumbnailUrl: string | null;
+            cloudinaryPublicId: string | null;
+            fileSize: number | null;
+            fileType: string | null;
+            hasDamageDetected: boolean;
+            damageDetectionData: import("@prisma/client/runtime/client").JsonValue | null;
+        }[];
+        catalog: {
+            bodyType: string | null;
+            fuelType: string | null;
+            transmission: string | null;
+            engineCapacity: string | null;
+            basePrice: import("@prisma/client-runtime-utils").Decimal;
+        } | null;
+    } & {
+        id: string;
+        userId: string;
+        updatedAt: Date;
+        year: number;
+        isActive: boolean;
+        manufacturer: string;
+        modelName: string;
+        variant: string | null;
+        catalogId: string | null;
+        registrationNumber: string;
+        vinNumber: string | null;
+        color: string | null;
+        mileage: number | null;
+        condition: import("@prisma/client").$Enums.CarCondition;
+        purchaseDate: Date | null;
+        purchasePrice: import("@prisma/client-runtime-utils").Decimal | null;
+        isForResale: boolean;
+        registeredAt: Date;
+    })[]>;
+    findOne(carId: string, userId: string): Promise<{
+        listings: {
+            title: string;
+            description: string | null;
+            id: string;
+            userId: string;
+            updatedAt: Date;
+            listingStatus: import("@prisma/client").$Enums.ListingStatus;
+            currency: string;
+            carId: string;
+            askingPrice: import("@prisma/client-runtime-utils").Decimal;
+            isNegotiable: boolean;
+            viewCount: number;
+            listedAt: Date;
+            soldAt: Date | null;
+        }[];
+        _count: {
+            rentals: number;
+        };
+        images: {
+            id: string;
+            imageUrl: string;
+            uploadedAt: Date;
+            isCurrent: boolean;
+            version: number;
+            imageCategory: import("@prisma/client").$Enums.ImageCategory;
+            carId: string;
+            isPermanent: boolean;
+            thumbnailUrl: string | null;
+            cloudinaryPublicId: string | null;
+            fileSize: number | null;
+            fileType: string | null;
+            hasDamageDetected: boolean;
+            damageDetectionData: import("@prisma/client/runtime/client").JsonValue | null;
+        }[];
+        catalog: {
+            description: string | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            year: number;
+            isActive: boolean;
+            manufacturer: string;
+            modelName: string;
+            variant: string | null;
+            bodyType: string | null;
+            fuelType: string | null;
+            transmission: string | null;
+            engineCapacity: string | null;
+            seatingCapacity: number | null;
+            basePrice: import("@prisma/client-runtime-utils").Decimal;
+            features: import("@prisma/client/runtime/client").JsonValue | null;
+            currency: string;
+        } | null;
+    } & {
+        id: string;
+        userId: string;
+        updatedAt: Date;
+        year: number;
+        isActive: boolean;
+        manufacturer: string;
+        modelName: string;
+        variant: string | null;
+        catalogId: string | null;
+        registrationNumber: string;
+        vinNumber: string | null;
+        color: string | null;
+        mileage: number | null;
+        condition: import("@prisma/client").$Enums.CarCondition;
+        purchaseDate: Date | null;
+        purchasePrice: import("@prisma/client-runtime-utils").Decimal | null;
+        isForResale: boolean;
+        registeredAt: Date;
+    }>;
+    update(carId: string, userId: string, dto: UpdateCarDto): Promise<{
+        id: string;
+        userId: string;
+        updatedAt: Date;
+        year: number;
+        isActive: boolean;
+        manufacturer: string;
+        modelName: string;
+        variant: string | null;
+        catalogId: string | null;
+        registrationNumber: string;
+        vinNumber: string | null;
+        color: string | null;
+        mileage: number | null;
+        condition: import("@prisma/client").$Enums.CarCondition;
+        purchaseDate: Date | null;
+        purchasePrice: import("@prisma/client-runtime-utils").Decimal | null;
+        isForResale: boolean;
+        registeredAt: Date;
+    }>;
+    remove(carId: string, userId: string): Promise<{
+        id: string;
+        userId: string;
+        updatedAt: Date;
+        year: number;
+        isActive: boolean;
+        manufacturer: string;
+        modelName: string;
+        variant: string | null;
+        catalogId: string | null;
+        registrationNumber: string;
+        vinNumber: string | null;
+        color: string | null;
+        mileage: number | null;
+        condition: import("@prisma/client").$Enums.CarCondition;
+        purchaseDate: Date | null;
+        purchasePrice: import("@prisma/client-runtime-utils").Decimal | null;
+        isForResale: boolean;
+        registeredAt: Date;
+    }>;
+    checkRegistrationImages(carId: string): Promise<{
+        hasRegistrationImages: boolean;
+    }>;
+}

@@ -1,0 +1,429 @@
+// ============================================================================
+// CAR DAMAGE DETECTION & MARKETPLACE PLATFORM - PRISMA SCHEMA
+// PostgreSQL on Neon | NestJS Backend
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum AccountType {
+  INDIVIDUAL
+  CAR_RENTAL
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum CarCondition {
+  NEW
+  USED
+  DAMAGED
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  PENDING
+  INACTIVE
+}
+
+enum ImageCategory {
+  REGISTRATION_FRONT
+  REGISTRATION_BACK
+  REGISTRATION_LEFT
+  REGISTRATION_RIGHT
+  PERIODIC_FRONT
+  PERIODIC_BACK
+  PERIODIC_LEFT
+  PERIODIC_RIGHT
+  DAMAGE_DETECTION
+  LISTING_IMAGE
+}
+
+enum RentalStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+  SYSTEM
+}
+
+// ============================================================================
+// USERS TABLE
+// Stores all registered users: individuals, car rental businesses, admins
+// ============================================================================
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  passwordHash  String?       @map("password_hash") // Nullable for OAuth-only users
+
+  // OAuth provider IDs
+  googleId      String?       @unique @map("google_id")
+  facebookId    String?       @unique @map("facebook_id")
+
+  // User type and status
+  accountType   AccountType   @default(INDIVIDUAL) @map("account_type")
+  accountStatus AccountStatus @default(ACTIVE) @map("account_status")
+
+  // Personal information
+  fullName      String        @map("full_name")
+  phoneNumber   String?       @map("phone_number")
+  address       String?
+  city          String?
+  country       String?
+  postalCode    String?       @map("postal_code")
+
+  // For car rental businesses
+  businessName    String?     @map("business_name")
+  businessLicense String?     @map("business_license")
+
+  // CNIC verification (required before buy/sell/rent)
+  cnicImageUrl  String?       @map("cnic_image_url")
+  isVerified    Boolean       @default(false) @map("is_verified")
+
+  // Profile image
+  avatarUrl     String?       @map("avatar_url")
+
+  // Refresh token for JWT
+  refreshToken  String?       @map("refresh_token")
+
+  // Timestamps
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  lastLogin     DateTime?     @map("last_login")
+
+  // Relations
+  cars          UserCar[]
+  listings      CarListing[]
+  rentals       Rental[]
+  notifications Notification[]
+
+  @@index([email])
+  @@index([accountType])
+  @@index([accountStatus])
+  @@map("users")
+}
+
+// ============================================================================
+// CAR CATALOG TABLE
+// Reference catalog of car models with specs & pricing (admin-managed)
+// ============================================================================
+
+model CarCatalog {
+  id              String    @id @default(uuid())
+
+  // Car details
+  manufacturer    String
+  modelName       String    @map("model_name")
+  year            Int
+  variant         String?
+
+  // Specifications
+  bodyType        String?   @map("body_type")       // Sedan, SUV, Hatchback, etc.
+  fuelType        String?   @map("fuel_type")       // Petrol, Diesel, Hybrid, Electric
+  transmission    String?                            // Manual, Automatic, CVT
+  engineCapacity  String?   @map("engine_capacity") // e.g., 1800cc
+  seatingCapacity Int?      @map("seating_capacity")
+
+  // Pricing
+  basePrice       Decimal   @map("base_price") @db.Decimal(12, 2)
+  currency        String    @default("PKR")
+
+  // Features/Description
+  description     String?
+  features        Json?     // JSON array of features
+
+  // Status
+  isActive        Boolean   @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  images          CarCatalogImage[]
+  userCars        UserCar[]
+
+  @@index([manufacturer])
+  @@index([modelName])
+  @@index([year])
+  @@index([isActive])
+  @@map("car_catalog")
+}
+
+// ============================================================================
+// CAR CATALOG IMAGES TABLE
+// Professional/stock images for catalog entries (admin uploads)
+// ============================================================================
+
+model CarCatalogImage {
+  id          String    @id @default(uuid())
+  catalogId   String    @map("catalog_id")
+  
+  // Image details
+  imageUrl    String    @map("image_url")
+  imageOrder  Int       @default(0) @map("image_order")
+  isPrimary   Boolean   @default(false) @map("is_primary")
+  altText     String?   @map("alt_text")
+
+  // Timestamps
+  uploadedAt  DateTime  @default(now()) @map("uploaded_at")
+
+  // Relations
+  catalog     CarCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+
+  @@index([catalogId])
+  @@map("car_catalog_images")
+}
+
+// ============================================================================
+// USER OWNED CARS TABLE
+// Cars registered by users (linked to catalog or custom entry)
+// ============================================================================
+
+model UserCar {
+  id                  String       @id @default(uuid())
+  userId              String       @map("user_id")
+  catalogId           String?      @map("catalog_id") // Optional link to catalog
+
+  // Car identification
+  registrationNumber  String       @unique @map("registration_number")
+  vinNumber           String?      @map("vin_number")
+
+  // Car details (from catalog or user-entered)
+  manufacturer        String
+  modelName           String       @map("model_name")
+  year                Int
+  variant             String?
+
+  // Additional details
+  color               String?
+  mileage             Int?         // in kilometers
+  condition           CarCondition @default(USED)
+
+  // Purchase information
+  purchaseDate        DateTime?    @map("purchase_date")
+  purchasePrice       Decimal?     @map("purchase_price") @db.Decimal(12, 2)
+
+  // Current status
+  isForResale         Boolean      @default(false) @map("is_for_resale")
+  isActive            Boolean      @default(true) @map("is_active")
+
+  // Timestamps
+  registeredAt        DateTime     @default(now()) @map("registered_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalog             CarCatalog?  @relation(fields: [catalogId], references: [id], onDelete: SetNull)
+  images              CarImage[]
+  listings            CarListing[]
+  rentals             Rental[]
+
+  @@index([userId])
+  @@index([registrationNumber])
+  @@index([isForResale])
+  @@index([isActive])
+  @@map("user_cars")
+}
+
+// ============================================================================
+// CAR IMAGES TABLE
+// All user-uploaded car images: registration (permanent), periodic, damage, listing
+// ============================================================================
+
+model CarImage {
+  id                  String        @id @default(uuid())
+  carId               String        @map("car_id")
+
+  // Image categorization
+  imageCategory       ImageCategory @map("image_category")
+
+  // Image storage (Cloudinary)
+  imageUrl            String        @map("image_url")
+  thumbnailUrl        String?       @map("thumbnail_url")
+  cloudinaryPublicId  String?       @map("cloudinary_public_id") // For deletion/management
+
+  // Metadata
+  fileSize            Int?          @map("file_size")  // in bytes
+  fileType            String?       @map("file_type")  // jpg, png, webp
+
+  // Versioning for periodic images
+  version             Int           @default(1)
+  isCurrent           Boolean       @default(true) @map("is_current")
+
+  // Registration images are permanent (cannot be deleted/changed)
+  isPermanent         Boolean       @default(false) @map("is_permanent")
+
+  // Damage detection results
+  hasDamageDetected   Boolean       @default(false) @map("has_damage_detected")
+  damageDetectionData Json?         @map("damage_detection_data") // YOLOv8 results
+
+  // Timestamps
+  uploadedAt          DateTime      @default(now()) @map("uploaded_at")
+
+  // Relations
+  car                 UserCar       @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@index([carId])
+  @@index([imageCategory])
+  @@index([isCurrent])
+  @@index([isPermanent])
+  @@map("car_images")
+}
+
+// ============================================================================
+// CAR LISTINGS TABLE
+// Marketplace resale listings
+// ============================================================================
+
+model CarListing {
+  id              String        @id @default(uuid())
+  carId           String        @map("car_id")
+  userId          String        @map("user_id")
+
+  // Listing details
+  askingPrice     Decimal       @map("asking_price") @db.Decimal(12, 2)
+  currency        String        @default("PKR")
+
+  // Description
+  title           String
+  description     String?
+
+  // Negotiation
+  isNegotiable    Boolean       @default(true) @map("is_negotiable")
+
+  // Status
+  listingStatus   ListingStatus @default(ACTIVE) @map("listing_status")
+
+  // Views and engagement
+  viewCount       Int           @default(0) @map("view_count")
+
+  // Timestamps
+  listedAt        DateTime      @default(now()) @map("listed_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  soldAt          DateTime?     @map("sold_at")
+
+  // Relations
+  car             UserCar       @relation(fields: [carId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([listingStatus])
+  @@index([userId])
+  @@index([carId])
+  @@index([askingPrice])
+  @@map("car_listings")
+}
+
+// ============================================================================
+// RENTALS TABLE
+// Simple rental log for car rental businesses
+// ============================================================================
+
+model Rental {
+  id                String       @id @default(uuid())
+  carId             String       @map("car_id")
+  userId            String       @map("user_id") // The car_rental business user
+
+  // Renter information (stored as fields, not separate table)
+  renterName        String       @map("renter_name")
+  renterPhone       String?      @map("renter_phone")
+  renterEmail       String?      @map("renter_email")
+  renterCnic        String?      @map("renter_cnic")
+
+  // Rental period
+  startDate         DateTime     @map("start_date")
+  endDate           DateTime     @map("end_date")
+  actualReturnDate  DateTime?    @map("actual_return_date")
+
+  // Mileage tracking
+  mileageAtStart    Int?         @map("mileage_at_start")
+  mileageAtEnd      Int?         @map("mileage_at_end")
+
+  // Damage tracking
+  preRentalNotes    String?      @map("pre_rental_notes")
+  postRentalNotes   String?      @map("post_rental_notes")
+  damageCharges     Decimal?     @map("damage_charges") @db.Decimal(12, 2)
+  damageDescription String?      @map("damage_description")
+
+  // Financial
+  rentalPrice       Decimal      @map("rental_price") @db.Decimal(12, 2)
+  totalCharges      Decimal?     @map("total_charges") @db.Decimal(12, 2)
+  currency          String       @default("PKR")
+
+  // Status
+  status            RentalStatus @default(ACTIVE)
+
+  // Pre/post inspection image versions (references to car_images versions)
+  preInspectionVersion  Int?     @map("pre_inspection_version")
+  postInspectionVersion Int?     @map("post_inspection_version")
+
+  // Timestamps
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  car               UserCar      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([carId])
+  @@index([userId])
+  @@index([status])
+  @@index([startDate])
+  @@map("rentals")
+}
+
+// ============================================================================
+// NOTIFICATIONS TABLE
+// In-app notification system
+// ============================================================================
+
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+
+  // Notification content
+  title       String
+  message     String
+  type        NotificationType @default(INFO)
+
+  // Read status
+  isRead      Boolean          @default(false) @map("is_read")
+
+  // Optional link to related resource
+  actionUrl   String?          @map("action_url")
+
+  // Metadata
+  metadata    Json?            // Extra data (e.g., carId, listingId, rentalId)
+
+  // Timestamps
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
