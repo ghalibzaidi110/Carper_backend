@@ -28,13 +28,34 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('Email already registered');
+      throw new ConflictException('Email address is already registered');
     }
 
-    // Hash password
+    // Check if phone number already exists
+    const existingPhone = await this.prisma.user.findFirst({
+      where: { phoneNumber: dto.phoneNumber },
+    });
+
+    if (existingPhone) {
+      throw new ConflictException('Phone number is already registered');
+    }
+
+    // Validate business fields for CAR_RENTAL accounts
+    if (dto.accountType === AccountType.CAR_RENTAL) {
+      if (!dto.businessName || dto.businessName.trim().length < 3) {
+        throw new BadRequestException(
+          'Business name is required and must be at least 3 characters for CAR_RENTAL accounts'
+        );
+      }
+    }
+
+    // Hash password with strong algorithm
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
-    // Create user (always INDIVIDUAL on self-registration)
+    // Set default country if not provided
+    const country = dto.country || 'Pakistan';
+
+    // Create user with all required fields
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
@@ -42,8 +63,11 @@ export class AuthService {
         fullName: dto.fullName,
         phoneNumber: dto.phoneNumber,
         city: dto.city,
-        country: dto.country,
-        accountType: AccountType.INDIVIDUAL,
+        address: dto.address,
+        country,
+        accountType: dto.accountType,
+        businessName: dto.businessName,
+        businessLicense: dto.businessLicense,
       },
     });
 
@@ -52,6 +76,7 @@ export class AuthService {
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
     return {
+      message: 'Registration successful',
       user: this.sanitizeUser(user),
       ...tokens,
     };

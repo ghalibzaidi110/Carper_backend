@@ -12,13 +12,13 @@ export declare class UsersController {
         fullName: string;
         phoneNumber: string | null;
         city: string | null;
-        country: string | null;
-        accountType: import("@prisma/client").$Enums.AccountType;
-        accountStatus: import("@prisma/client").$Enums.AccountStatus;
         address: string | null;
-        postalCode: string | null;
+        accountType: import("@prisma/client").$Enums.AccountType;
+        country: string | null;
         businessName: string | null;
         businessLicense: string | null;
+        accountStatus: import("@prisma/client").$Enums.AccountStatus;
+        postalCode: string | null;
         cnicImageUrl: string | null;
         isVerified: boolean;
         avatarUrl: string | null;
@@ -30,8 +30,8 @@ export declare class UsersController {
         fullName: string;
         phoneNumber: string | null;
         city: string | null;
-        country: string | null;
         address: string | null;
+        country: string | null;
         postalCode: string | null;
     }>;
     changePassword(userId: string, dto: ChangePasswordDto): Promise<{

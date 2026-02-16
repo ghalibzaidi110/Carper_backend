@@ -83,8 +83,8 @@ export declare class UserCarsController {
     })[]>;
     findOne(carId: string, userId: string): Promise<{
         listings: {
-            title: string;
             description: string | null;
+            title: string;
             id: string;
             userId: string;
             updatedAt: Date;

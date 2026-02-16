@@ -25,6 +25,9 @@ import { DamageDetectionModule } from './damage-detection/damage-detection.modul
 import { AdminModule } from './admin/admin.module';
 import { PdfModule } from './pdf/pdf.module';
 
+// Controllers
+import { AppController } from './app.controller';
+
 // Common
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -54,6 +57,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     AdminModule,
     PdfModule,
   ],
+  controllers: [AppController],
   providers: [
     // Global JWT auth guard — all routes require auth unless @Public()
     { provide: APP_GUARD, useClass: JwtAuthGuard },

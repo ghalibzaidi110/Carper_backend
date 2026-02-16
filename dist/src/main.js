@@ -47,7 +47,9 @@ async function bootstrap() {
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
     });
-    app.setGlobalPrefix('api/v1');
+    app.setGlobalPrefix('api/v1', {
+        exclude: ['/'],
+    });
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,
@@ -78,7 +80,7 @@ async function bootstrap() {
     swagger_1.SwaggerModule.setup('api/docs', app, document);
     const port = process.env.PORT || 3000;
     await app.listen(port);
-    console.log(`🚀 Server running on http://localhost:${port}`);
+    console.log(`🚀 Hello from Carper - Server running on http://localhost:${port}`);
     console.log(`📚 Swagger docs at http://localhost:${port}/api/docs`);
 }
 bootstrap();

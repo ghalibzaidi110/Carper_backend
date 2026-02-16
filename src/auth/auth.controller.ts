@@ -27,7 +27,10 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @ApiOperation({ summary: 'Register a new individual account' })
+  @ApiOperation({ 
+    summary: 'Register a new user account',
+    description: 'Create a new account with email and password. Choose account type: INDIVIDUAL or CAR_RENTAL. All fields are required.'
+  })
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
@@ -35,7 +38,10 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiOperation({ 
+    summary: 'Login with email and password',
+    description: 'Authenticate user and receive access & refresh tokens'
+  })
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
@@ -57,50 +63,51 @@ export class AuthController {
     return this.authService.logout(userId);
   }
 
-  // ─── GOOGLE OAUTH ─────────────────────────────────────────────
+  // ─── GOOGLE OAUTH (DISABLED) ─────────────────────────────────
+  // Uncomment and configure when OAuth is needed
 
-  @Public()
-  @Get('google')
-  @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: 'Initiate Google OAuth login' })
-  async googleAuth() {
-    // Guard redirects to Google
-  }
+  // @Public()
+  // @Get('google')
+  // @UseGuards(GoogleAuthGuard)
+  // @ApiOperation({ summary: 'Initiate Google OAuth login' })
+  // async googleAuth() {
+  //   // Guard redirects to Google
+  // }
 
-  @Public()
-  @Get('google/callback')
-  @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: 'Google OAuth callback' })
-  async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const result = await this.authService.googleLogin(req.user as any);
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
-    // Redirect to frontend with tokens as query params
-    res.redirect(
-      `${frontendUrl}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`,
-    );
-  }
+  // @Public()
+  // @Get('google/callback')
+  // @UseGuards(GoogleAuthGuard)
+  // @ApiOperation({ summary: 'Google OAuth callback' })
+  // async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
+  //   const result = await this.authService.googleLogin(req.user as any);
+  //   const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+  //   // Redirect to frontend with tokens as query params
+  //   res.redirect(
+  //     `${frontendUrl}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`,
+  //   );
+  // }
 
-  // ─── FACEBOOK OAUTH ───────────────────────────────────────────
+  // ─── FACEBOOK OAUTH (DISABLED) ────────────────────────────────
 
-  @Public()
-  @Get('facebook')
-  @UseGuards(FacebookAuthGuard)
-  @ApiOperation({ summary: 'Initiate Facebook OAuth login' })
-  async facebookAuth() {
-    // Guard redirects to Facebook
-  }
+  // @Public()
+  // @Get('facebook')
+  // @UseGuards(FacebookAuthGuard)
+  // @ApiOperation({ summary: 'Initiate Facebook OAuth login' })
+  // async facebookAuth() {
+  //   // Guard redirects to Facebook
+  // }
 
-  @Public()
-  @Get('facebook/callback')
-  @UseGuards(FacebookAuthGuard)
-  @ApiOperation({ summary: 'Facebook OAuth callback' })
-  async facebookAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const result = await this.authService.facebookLogin(req.user as any);
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
-    res.redirect(
-      `${frontendUrl}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`,
-    );
-  }
+  // @Public()
+  // @Get('facebook/callback')
+  // @UseGuards(FacebookAuthGuard)
+  // @ApiOperation({ summary: 'Facebook OAuth callback' })
+  // async facebookAuthCallback(@Req() req: Request, @Res() res: Response) {
+  //   const result = await this.authService.facebookLogin(req.user as any);
+  //   const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+  //   res.redirect(
+  //     `${frontendUrl}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`,
+  //   );
+  // }
 
   // ─── ME ────────────────────────────────────────────────────────
 

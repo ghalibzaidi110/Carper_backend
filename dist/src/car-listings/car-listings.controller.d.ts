@@ -53,8 +53,8 @@ export declare class CarListingsController {
                 registeredAt: Date;
             };
         } & {
-            title: string;
             description: string | null;
+            title: string;
             id: string;
             userId: string;
             updatedAt: Date;
@@ -138,8 +138,8 @@ export declare class CarListingsController {
             registeredAt: Date;
         };
     } & {
-        title: string;
         description: string | null;
+        title: string;
         id: string;
         userId: string;
         updatedAt: Date;
@@ -181,8 +181,8 @@ export declare class CarListingsController {
             registeredAt: Date;
         };
     } & {
-        title: string;
         description: string | null;
+        title: string;
         id: string;
         userId: string;
         updatedAt: Date;
@@ -204,8 +204,8 @@ export declare class CarListingsController {
             color: string | null;
         };
     } & {
-        title: string;
         description: string | null;
+        title: string;
         id: string;
         userId: string;
         updatedAt: Date;
@@ -219,8 +219,8 @@ export declare class CarListingsController {
         soldAt: Date | null;
     })[]>;
     update(id: string, userId: string, dto: UpdateListingDto): Promise<{
-        title: string;
         description: string | null;
+        title: string;
         id: string;
         userId: string;
         updatedAt: Date;
@@ -234,8 +234,8 @@ export declare class CarListingsController {
         soldAt: Date | null;
     }>;
     updateStatus(id: string, userId: string, dto: UpdateListingStatusDto): Promise<{
-        title: string;
         description: string | null;
+        title: string;
         id: string;
         userId: string;
         updatedAt: Date;

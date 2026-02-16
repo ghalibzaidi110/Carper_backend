@@ -39,20 +39,6 @@ let AuthController = class AuthController {
     async logout(userId) {
         return this.authService.logout(userId);
     }
-    async googleAuth() {
-    }
-    async googleAuthCallback(req, res) {
-        const result = await this.authService.googleLogin(req.user);
-        const frontendUrl = this.configService.get('FRONTEND_URL');
-        res.redirect(`${frontendUrl}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`);
-    }
-    async facebookAuth() {
-    }
-    async facebookAuthCallback(req, res) {
-        const result = await this.authService.facebookLogin(req.user);
-        const frontendUrl = this.configService.get('FRONTEND_URL');
-        res.redirect(`${frontendUrl}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`);
-    }
     async getMe(user) {
         return user;
     }
@@ -61,7 +47,10 @@ exports.AuthController = AuthController;
 __decorate([
     (0, decorators_1.Public)(),
     (0, common_1.Post)('register'),
-    (0, swagger_1.ApiOperation)({ summary: 'Register a new individual account' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Register a new user account',
+        description: 'Create a new account with email and password. Choose account type: INDIVIDUAL or CAR_RENTAL. All fields are required.'
+    }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [dto_1.RegisterDto]),
@@ -71,7 +60,10 @@ __decorate([
     (0, decorators_1.Public)(),
     (0, common_1.Post)('login'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({ summary: 'Login with email and password' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Login with email and password',
+        description: 'Authenticate user and receive access & refresh tokens'
+    }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [dto_1.LoginDto]),
@@ -99,46 +91,6 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
-__decorate([
-    (0, decorators_1.Public)(),
-    (0, common_1.Get)('google'),
-    (0, common_1.UseGuards)(guards_1.GoogleAuthGuard),
-    (0, swagger_1.ApiOperation)({ summary: 'Initiate Google OAuth login' }),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "googleAuth", null);
-__decorate([
-    (0, decorators_1.Public)(),
-    (0, common_1.Get)('google/callback'),
-    (0, common_1.UseGuards)(guards_1.GoogleAuthGuard),
-    (0, swagger_1.ApiOperation)({ summary: 'Google OAuth callback' }),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Res)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "googleAuthCallback", null);
-__decorate([
-    (0, decorators_1.Public)(),
-    (0, common_1.Get)('facebook'),
-    (0, common_1.UseGuards)(guards_1.FacebookAuthGuard),
-    (0, swagger_1.ApiOperation)({ summary: 'Initiate Facebook OAuth login' }),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "facebookAuth", null);
-__decorate([
-    (0, decorators_1.Public)(),
-    (0, common_1.Get)('facebook/callback'),
-    (0, common_1.UseGuards)(guards_1.FacebookAuthGuard),
-    (0, swagger_1.ApiOperation)({ summary: 'Facebook OAuth callback' }),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Res)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "facebookAuthCallback", null);
 __decorate([
     (0, common_1.Get)('me'),
     (0, swagger_1.ApiBearerAuth)(),

@@ -19,7 +19,9 @@ async function bootstrap() {
   });
 
   // ─── GLOBAL PREFIX ──────────────────────────────────────────
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['/'], // Exclude root path from global prefix
+  });
 
   // ─── VALIDATION PIPE ────────────────────────────────────────
   app.useGlobalPipes(
@@ -61,7 +63,7 @@ async function bootstrap() {
   // ─── START SERVER ───────────────────────────────────────────
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`🚀 Hello from Carper - Server running on http://localhost:${port}`);
   console.log(`📚 Swagger docs at http://localhost:${port}/api/docs`);
 }
 bootstrap();

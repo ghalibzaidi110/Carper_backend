@@ -27,6 +27,7 @@ const rentals_module_1 = require("./rentals/rentals.module");
 const damage_detection_module_1 = require("./damage-detection/damage-detection.module");
 const admin_module_1 = require("./admin/admin.module");
 const pdf_module_1 = require("./pdf/pdf.module");
+const app_controller_1 = require("./app.controller");
 const all_exceptions_filter_1 = require("./common/filters/all-exceptions.filter");
 const transform_interceptor_1 = require("./common/interceptors/transform.interceptor");
 let AppModule = class AppModule {
@@ -51,6 +52,7 @@ exports.AppModule = AppModule = __decorate([
             admin_module_1.AdminModule,
             pdf_module_1.PdfModule,
         ],
+        controllers: [app_controller_1.AppController],
         providers: [
             { provide: core_1.APP_GUARD, useClass: jwt_auth_guard_1.JwtAuthGuard },
             { provide: core_1.APP_GUARD, useClass: roles_guard_1.RolesGuard },

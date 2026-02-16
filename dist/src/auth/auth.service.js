@@ -63,9 +63,21 @@ let AuthService = class AuthService {
             where: { email: dto.email },
         });
         if (existingUser) {
-            throw new common_1.ConflictException('Email already registered');
+            throw new common_1.ConflictException('Email address is already registered');
+        }
+        const existingPhone = await this.prisma.user.findFirst({
+            where: { phoneNumber: dto.phoneNumber },
+        });
+        if (existingPhone) {
+            throw new common_1.ConflictException('Phone number is already registered');
+        }
+        if (dto.accountType === client_1.AccountType.CAR_RENTAL) {
+            if (!dto.businessName || dto.businessName.trim().length < 3) {
+                throw new common_1.BadRequestException('Business name is required and must be at least 3 characters for CAR_RENTAL accounts');
+            }
         }
         const passwordHash = await bcrypt.hash(dto.password, 12);
+        const country = dto.country || 'Pakistan';
         const user = await this.prisma.user.create({
             data: {
                 email: dto.email,
@@ -73,13 +85,17 @@ let AuthService = class AuthService {
                 fullName: dto.fullName,
                 phoneNumber: dto.phoneNumber,
                 city: dto.city,
-                country: dto.country,
-                accountType: client_1.AccountType.INDIVIDUAL,
+                address: dto.address,
+                country,
+                accountType: dto.accountType,
+                businessName: dto.businessName,
+                businessLicense: dto.businessLicense,
             },
         });
         const tokens = await this.generateTokens(user.id, user.email, user.accountType);
         await this.updateRefreshToken(user.id, tokens.refreshToken);
         return {
+            message: 'Registration successful',
             user: this.sanitizeUser(user),
             ...tokens,
         };

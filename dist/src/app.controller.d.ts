@@ -1,6 +1,17 @@
-import { AppService } from './app.service';
 export declare class AppController {
-    private readonly appService;
-    constructor(appService: AppService);
-    getHello(): string;
+    getWelcome(): {
+        message: string;
+        version: string;
+        status: string;
+        docs: string;
+        endpoints: {
+            auth: string;
+            users: string;
+            cars: string;
+            marketplace: string;
+            rentals: string;
+            damageDetection: string;
+        };
+        timestamp: string;
+    };
 }
