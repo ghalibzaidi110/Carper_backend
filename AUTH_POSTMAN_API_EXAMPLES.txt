@@ -1,0 +1,430 @@
+=====================================================================
+AUTHENTICATION ENDPOINTS - POSTMAN EXAMPLES
+=====================================================================
+
+✅ YES - All endpoints return JWT tokens (accessToken & refreshToken)
+
+=====================================================================
+1. INDIVIDUAL USER - SIGNUP
+=====================================================================
+
+URL:
+POST http://localhost:3000/api/v1/auth/register
+
+Headers:
+Content-Type: application/json
+
+Body (raw JSON):
+{
+  "email": "john.doe@example.com",
+  "password": "SecurePass123!",
+  "fullName": "John Doe",
+  "phoneNumber": "+923001234567",
+  "city": "Karachi",
+  "address": "House 123, Street 5, DHA Phase 6",
+  "accountType": "INDIVIDUAL",
+  "country": "Pakistan"
+}
+
+RESPONSE (200 OK):
+{
+  "success": true,
+  "data": {
+    "message": "Registration successful",
+    "user": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "email": "john.doe@example.com",
+      "accountType": "INDIVIDUAL",
+      "accountStatus": "ACTIVE",
+      "fullName": "John Doe",
+      "phoneNumber": "+923001234567",
+      "address": "House 123, Street 5, DHA Phase 6",
+      "city": "Karachi",
+      "country": "Pakistan",
+      "postalCode": null,
+      "businessName": null,
+      "businessLicense": null,
+      "cnicImageUrl": null,
+      "isVerified": false,
+      "avatarUrl": null,
+      "createdAt": "2026-02-17T12:00:00.000Z",
+      "updatedAt": "2026-02-17T12:00:00.000Z",
+      "lastLogin": null
+    },
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwiYWNjb3VudFR5cGUiOiJJTkRJVklEVUFMIiwiaWF0IjoxNzcxMzE2MDAwLCJleHAiOjE3NzEzMTY5MDB9.abc123...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwiYWNjb3VudFR5cGUiOiJJTkRJVklEVUFMIiwiaWF0IjoxNzcxMzE2MDAwLCJleHAiOjE3NzE5MjA4MDB9.xyz789..."
+  },
+  "timestamp": "2026-02-17T12:00:00.000Z"
+}
+
+TOKEN DETAILS:
+✅ accessToken: Valid for 15 minutes
+✅ refreshToken: Valid for 7 days
+✅ Copy accessToken and use in Authorization header for protected routes
+
+=====================================================================
+2. INDIVIDUAL USER - LOGIN
+=====================================================================
+
+URL:
+POST http://localhost:3000/api/v1/auth/login
+
+Headers:
+Content-Type: application/json
+
+Body (raw JSON):
+{
+  "email": "john.doe@example.com",
+  "password": "SecurePass123!"
+}
+
+RESPONSE (200 OK):
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "email": "john.doe@example.com",
+      "googleId": null,
+      "facebookId": null,
+      "accountType": "INDIVIDUAL",
+      "accountStatus": "ACTIVE",
+      "fullName": "John Doe",
+      "phoneNumber": "+923001234567",
+      "address": "House 123, Street 5, DHA Phase 6",
+      "city": "Karachi",
+      "country": "Pakistan",
+      "postalCode": null,
+      "businessName": null,
+      "businessLicense": null,
+      "cnicImageUrl": null,
+      "isVerified": false,
+      "avatarUrl": null,
+      "createdAt": "2026-02-17T12:00:00.000Z",
+      "updatedAt": "2026-02-17T12:00:05.000Z",
+      "lastLogin": "2026-02-17T12:05:00.000Z"
+    },
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwiYWNjb3VudFR5cGUiOiJJTkRJVklEVUFMIiwiaWF0IjoxNzcxMzE2MzAwLCJleHAiOjE3NzEzMTcyMDB9.qwe456...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwiYWNjb3VudFR5cGUiOiJJTkRJVklEVUFMIiwiaWF0IjoxNzcxMzE2MzAwLCJleHAiOjE3NzE5MjExMDB9.uio234..."
+  },
+  "timestamp": "2026-02-17T12:05:00.000Z"
+}
+
+TOKEN DETAILS:
+✅ accessToken: Valid for 15 minutes
+✅ refreshToken: Valid for 7 days
+✅ Use accessToken in next requests: Authorization: Bearer {accessToken}
+
+=====================================================================
+3. CAR RENTAL BUSINESS - SIGNUP
+=====================================================================
+
+URL:
+POST http://localhost:3000/api/v1/auth/register
+
+Headers:
+Content-Type: application/json
+
+Body (raw JSON):
+{
+  "email": "contact@eliterentals.com",
+  "password": "RentalBiz123!",
+  "fullName": "Ahmed Khan",
+  "phoneNumber": "+923215678901",
+  "city": "Lahore",
+  "address": "Plot 45, Gulberg III, Lahore, Pakistan",
+  "accountType": "CAR_RENTAL",
+  "businessName": "Elite Car Rentals",
+  "businessLicense": "BL-PKR-2025-001",
+  "country": "Pakistan"
+}
+
+RESPONSE (201 CREATED):
+{
+  "success": true,
+  "data": {
+    "message": "Registration successful",
+    "user": {
+      "id": "660f9511-f30c-42e5-b827-557766551111",
+      "email": "contact@eliterentals.com",
+      "accountType": "CAR_RENTAL",
+      "accountStatus": "ACTIVE",
+      "fullName": "Ahmed Khan",
+      "phoneNumber": "+923215678901",
+      "address": "Plot 45, Gulberg III, Lahore, Pakistan",
+      "city": "Lahore",
+      "country": "Pakistan",
+      "postalCode": null,
+      "businessName": "Elite Car Rentals",
+      "businessLicense": "BL-PKR-2025-001",
+      "cnicImageUrl": null,
+      "isVerified": false,
+      "avatarUrl": null,
+      "createdAt": "2026-02-17T12:10:00.000Z",
+      "updatedAt": "2026-02-17T12:10:00.000Z",
+      "lastLogin": null
+    },
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NjBmOTUxMS1mMzBjLTQyZTUtYjgyNy01NTc3NjY1NTExMTEiLCJlbWFpbCI6ImNvbnRhY3RAZWxpdGVyZW50YWxzLmNvbSIsImFjY291bnRUeXBlIjoiQ0FSX1JFTlRBTCIsImlhdCI6MTc3MTMxNjIwMCwiZXhwIjoxNzcxMzE3MTAwfQ.mno678...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NjBmOTUxMS1mMzBjLTQyZTUtYjgyNy01NTc3NjY1NTExMTEiLCJlbWFpbCI6ImNvbnRhY3RAZWxpdGVyZW50YWxzLmNvbSIsImFjY291bnRUeXBlIjoiQ0FSX1JFTlRBTCIsImlhdCI6MTc3MTMxNjIwMCwiZXhwIjoxNzcxOTIxMDAwfQ.pqr345..."
+  },
+  "timestamp": "2026-02-17T12:10:00.000Z"
+}
+
+TOKEN DETAILS:
+✅ accessToken: Valid for 15 minutes
+✅ refreshToken: Valid for 7 days
+✅ accountType: CAR_RENTAL (has access to fleet management endpoints)
+
+=====================================================================
+4. CAR RENTAL BUSINESS - LOGIN
+=====================================================================
+
+URL:
+POST http://localhost:3000/api/v1/auth/login
+
+Headers:
+Content-Type: application/json
+
+Body (raw JSON):
+{
+  "email": "contact@eliterentals.com",
+  "password": "RentalBiz123!"
+}
+
+RESPONSE (200 OK):
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "660f9511-f30c-42e5-b827-557766551111",
+      "email": "contact@eliterentals.com",
+      "googleId": null,
+      "facebookId": null,
+      "accountType": "CAR_RENTAL",
+      "accountStatus": "ACTIVE",
+      "fullName": "Ahmed Khan",
+      "phoneNumber": "+923215678901",
+      "address": "Plot 45, Gulberg III, Lahore, Pakistan",
+      "city": "Lahore",
+      "country": "Pakistan",
+      "postalCode": null,
+      "businessName": "Elite Car Rentals",
+      "businessLicense": "BL-PKR-2025-001",
+      "cnicImageUrl": null,
+      "isVerified": false,
+      "avatarUrl": null,
+      "createdAt": "2026-02-17T12:10:00.000Z",
+      "updatedAt": "2026-02-17T12:10:05.000Z",
+      "lastLogin": "2026-02-17T12:15:00.000Z"
+    },
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NjBmOTUxMS1mMzBjLTQyZTUtYjgyNy01NTc3NjY1NTExMTEiLCJlbWFpbCI6ImNvbnRhY3RAZWxpdGVyZW50YWxzLmNvbSIsImFjY291bnRUeXBlIjoiQ0FSX1JFTlRBTCIsImlhdCI6MTc3MTMxNjUwMCwiZXhwIjoxNzcxMzE3NDAwfQ.rst901...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NjBmOTUxMS1mMzBjLTQyZTUtYjgyNy01NTc3NjY1NTExMTEiLCJlbWFpbCI6ImNvbnRhY3RAZWxpdGVyZW50YWxzLmNvbSIsImFjY291bnRUeXBlIjoiQ0FSX1JFTlRBTCIsImlhdCI6MTc3MTMxNjUwMCwiZXhwIjoxNzcxOTIxMzAwfQ.tuv678..."
+  },
+  "timestamp": "2026-02-17T12:15:00.000Z"
+}
+
+TOKEN DETAILS:
+✅ accessToken: Valid for 15 minutes
+✅ refreshToken: Valid for 7 days
+
+=====================================================================
+5. ADMIN USER - LOGIN (Pre-seeded in database)
+=====================================================================
+
+❌ NOTE: ADMIN SIGNUP IS NOT AVAILABLE
+✅ Use the default admin credentials below
+
+URL:
+POST http://localhost:3000/api/v1/auth/login
+
+Headers:
+Content-Type: application/json
+
+Body (raw JSON):
+{
+  "email": "ghalibzaidi115@gmail.com",
+  "password": "Admin@123456"
+}
+
+RESPONSE (200 OK):
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "admin-uuid-12345-67890",
+      "email": "ghalibzaidi115@gmail.com",
+      "googleId": null,
+      "facebookId": null,
+      "accountType": "ADMIN",
+      "accountStatus": "ACTIVE",
+      "fullName": "System Admin",
+      "phoneNumber": null,
+      "address": null,
+      "city": null,
+      "country": "Pakistan",
+      "postalCode": null,
+      "businessName": null,
+      "businessLicense": null,
+      "cnicImageUrl": null,
+      "isVerified": true,
+      "avatarUrl": null,
+      "createdAt": "2026-02-13T00:00:00.000Z",
+      "updatedAt": "2026-02-17T12:20:00.000Z",
+      "lastLogin": "2026-02-17T12:20:00.000Z"
+    },
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbi11dWlkLTEyMzQ1LTY3ODkwIiwiZW1haWwiOiJnaGFsaWJ6YWlkaTE1QGdtYWlsLmNvbSIsImFjY291bnRUeXBlIjoiQURNSU4iLCJpYXQiOjE3NzEzMTY4MDAsImV4cCI6MTc3MTMxNzcwMH0.abc234...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbi11dWlkLTEyMzQ1LTY3ODkwIiwiZW1haWwiOiJnaGFsaWJ6YWlkaTE1QGdtYWlsLmNvbSIsImFjY291bnRUeXBlIjoiQURNSU4iLCJpYXQiOjE3NzEzMTY4MDAsImV4cCI6MTc3MTkyMTYwMH0.def567..."
+  },
+  "timestamp": "2026-02-17T12:20:00.000Z"
+}
+
+TOKEN DETAILS:
+✅ accessToken: Valid for 15 minutes
+✅ refreshToken: Valid for 7 days
+✅ accountType: ADMIN (has access to all admin-only endpoints)
+✅ isVerified: true (admins are pre-verified)
+
+=====================================================================
+HOW TO USE TOKENS IN POSTMAN
+=====================================================================
+
+FOR PROTECTED ROUTES (e.g., /auth/me, /users/profile):
+
+1. Copy the accessToken from login/signup response
+2. Go to the Authorization tab in Postman
+3. Select "Bearer Token" from the Type dropdown
+4. Paste the accessToken in the Token field
+5. Click Send
+
+OR
+
+Manual Headers Method:
+Headers Tab → Add new header
+Key: Authorization
+Value: Bearer {accessToken}
+
+Example for getting current user:
+URL: GET http://localhost:3000/api/v1/auth/me
+Headers:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+=====================================================================
+PASSWORD REQUIREMENTS
+=====================================================================
+
+Password must contain:
+✓ Minimum 8 characters
+✓ At least 1 uppercase letter (A-Z)
+✓ At least 1 lowercase letter (a-z)
+✓ At least 1 number (0-9)
+✓ At least 1 special character (@$!%*?&#)
+
+Examples of valid passwords:
+✅ SecurePass123!
+✅ RentalBiz456@
+✅ Admin$789xyz
+
+Examples of invalid passwords:
+❌ password123 (no uppercase, no special char)
+❌ Pass123 (too short, no special char)
+❌ PASS123! (no lowercase)
+
+=====================================================================
+ERROR RESPONSES
+=====================================================================
+
+1. INVALID CREDENTIALS (401):
+Response:
+{
+  "success": false,
+  "statusCode": 401,
+  "message": "Invalid email or password",
+  "timestamp": "2026-02-17T12:25:00.000Z",
+  "path": "/api/v1/auth/login"
+}
+
+2. EMAIL ALREADY EXISTS (409):
+Response:
+{
+  "success": false,
+  "statusCode": 409,
+  "message": "Email address is already registered",
+  "timestamp": "2026-02-17T12:25:00.000Z",
+  "path": "/api/v1/auth/register"
+}
+
+3. WEAK PASSWORD (400):
+Response:
+{
+  "success": false,
+  "statusCode": 400,
+  "message": "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)",
+  "timestamp": "2026-02-17T12:25:00.000Z",
+  "path": "/api/v1/auth/register"
+}
+
+4. MISSING BUSINESS NAME FOR CAR_RENTAL (400):
+Response:
+{
+  "success": false,
+  "statusCode": 400,
+  "message": "Business name is required and must be at least 3 characters for CAR_RENTAL accounts",
+  "timestamp": "2026-02-17T12:25:00.000Z",
+  "path": "/api/v1/auth/register"
+}
+
+5. MISSING REQUIRED FIELD (400):
+Response:
+{
+  "success": false,
+  "statusCode": 400,
+  "message": "Email is required",
+  "timestamp": "2026-02-17T12:25:00.000Z",
+  "path": "/api/v1/auth/login"
+}
+
+=====================================================================
+QUICK POSTMAN IMPORT SUMMARY
+=====================================================================
+
+Collection Name: Carper Authentication
+
+1. Individual Signup
+   Method: POST
+   URL: http://localhost:3000/api/v1/auth/register
+   
+2. Individual Login
+   Method: POST
+   URL: http://localhost:3000/api/v1/auth/login
+   
+3. Car Rental Signup
+   Method: POST
+   URL: http://localhost:3000/api/v1/auth/register
+   
+4. Car Rental Login
+   Method: POST
+   URL: http://localhost:3000/api/v1/auth/login
+   
+5. Admin Login
+   Method: POST
+   URL: http://localhost:3000/api/v1/auth/login
+   
+6. Get Current User (Protected)
+   Method: GET
+   URL: http://localhost:3000/api/v1/auth/me
+   Auth: Bearer Token
+
+=====================================================================
+IMPORTANT NOTES
+=====================================================================
+
+✅ JWT TOKENS ARE RETURNED: Yes, every login/signup returns tokens
+✅ TOKEN TYPE: Bearer tokens (JWT format)
+✅ ACCESS TOKEN DURATION: 15 minutes
+✅ REFRESH TOKEN DURATION: 7 days
+✅ ADMIN SIGNUP: Not available, only pre-seeded admin exists
+✅ ACCOUNT TYPES: INDIVIDUAL or CAR_RENTAL (selected during signup)
+✅ ALL SIGNUP FIELDS ARE REQUIRED
+✅ PHONE NUMBER FORMAT: International with country code (+92...)
+
+=====================================================================
