@@ -6,8 +6,8 @@ export declare class CarCatalogService {
     create(dto: CreateCatalogDto): Promise<{
         images: {
             id: string;
-            isPrimary: boolean;
             catalogId: string;
+            isPrimary: boolean;
             imageUrl: string;
             imageOrder: number;
             altText: string | null;
@@ -23,6 +23,7 @@ export declare class CarCatalogService {
         manufacturer: string;
         modelName: string;
         variant: string | null;
+        currency: string;
         bodyType: string | null;
         fuelType: string | null;
         transmission: string | null;
@@ -30,7 +31,6 @@ export declare class CarCatalogService {
         seatingCapacity: number | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
         features: import("@prisma/client/runtime/client").JsonValue | null;
-        currency: string;
     }>;
     bulkCreate(entries: CreateCatalogDto[]): Promise<{
         count: number;
@@ -44,6 +44,7 @@ export declare class CarCatalogService {
             manufacturer: string;
             modelName: string;
             variant: string | null;
+            currency: string;
             bodyType: string | null;
             fuelType: string | null;
             transmission: string | null;
@@ -51,15 +52,14 @@ export declare class CarCatalogService {
             seatingCapacity: number | null;
             basePrice: import("@prisma/client-runtime-utils").Decimal;
             features: import("@prisma/client/runtime/client").JsonValue | null;
-            currency: string;
         }[];
     }>;
     findAll(filters: CatalogFilterDto): Promise<{
         items: ({
             images: {
                 id: string;
-                isPrimary: boolean;
                 catalogId: string;
+                isPrimary: boolean;
                 imageUrl: string;
                 imageOrder: number;
                 altText: string | null;
@@ -75,6 +75,7 @@ export declare class CarCatalogService {
             manufacturer: string;
             modelName: string;
             variant: string | null;
+            currency: string;
             bodyType: string | null;
             fuelType: string | null;
             transmission: string | null;
@@ -82,7 +83,6 @@ export declare class CarCatalogService {
             seatingCapacity: number | null;
             basePrice: import("@prisma/client-runtime-utils").Decimal;
             features: import("@prisma/client/runtime/client").JsonValue | null;
-            currency: string;
         })[];
         meta: {
             total: number;
@@ -94,8 +94,8 @@ export declare class CarCatalogService {
     findOne(id: string): Promise<{
         images: {
             id: string;
-            isPrimary: boolean;
             catalogId: string;
+            isPrimary: boolean;
             imageUrl: string;
             imageOrder: number;
             altText: string | null;
@@ -111,6 +111,7 @@ export declare class CarCatalogService {
         manufacturer: string;
         modelName: string;
         variant: string | null;
+        currency: string;
         bodyType: string | null;
         fuelType: string | null;
         transmission: string | null;
@@ -118,13 +119,12 @@ export declare class CarCatalogService {
         seatingCapacity: number | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
         features: import("@prisma/client/runtime/client").JsonValue | null;
-        currency: string;
     }>;
     update(id: string, dto: UpdateCatalogDto): Promise<{
         images: {
             id: string;
-            isPrimary: boolean;
             catalogId: string;
+            isPrimary: boolean;
             imageUrl: string;
             imageOrder: number;
             altText: string | null;
@@ -140,6 +140,7 @@ export declare class CarCatalogService {
         manufacturer: string;
         modelName: string;
         variant: string | null;
+        currency: string;
         bodyType: string | null;
         fuelType: string | null;
         transmission: string | null;
@@ -147,7 +148,6 @@ export declare class CarCatalogService {
         seatingCapacity: number | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
         features: import("@prisma/client/runtime/client").JsonValue | null;
-        currency: string;
     }>;
     remove(id: string): Promise<{
         description: string | null;
@@ -159,6 +159,7 @@ export declare class CarCatalogService {
         manufacturer: string;
         modelName: string;
         variant: string | null;
+        currency: string;
         bodyType: string | null;
         fuelType: string | null;
         transmission: string | null;
@@ -166,12 +167,11 @@ export declare class CarCatalogService {
         seatingCapacity: number | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
         features: import("@prisma/client/runtime/client").JsonValue | null;
-        currency: string;
     }>;
     addImage(catalogId: string, imageUrl: string, isPrimary?: boolean, altText?: string): Promise<{
         id: string;
-        isPrimary: boolean;
         catalogId: string;
+        isPrimary: boolean;
         imageUrl: string;
         imageOrder: number;
         altText: string | null;

@@ -55,8 +55,20 @@ export class UsersController {
     @CurrentUser('id') userId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const result = await this.cloudinaryService.uploadImage(file, 'cnic');
+    const result = await this.cloudinaryService.uploadImage(file, 'cnic', 5);
     return this.usersService.uploadCnic(userId, result.secure_url);
+  }
+
+  @Post('upload-avatar')
+  @ApiOperation({ summary: 'Upload profile avatar image' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('avatar'))
+  async uploadAvatar(
+    @CurrentUser('id') userId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const result = await this.cloudinaryService.uploadImage(file, 'avatars', 5);
+    return this.usersService.uploadAvatar(userId, result.secure_url);
   }
 
   @Get('dashboard')

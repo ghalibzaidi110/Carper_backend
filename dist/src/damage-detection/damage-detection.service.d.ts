@@ -51,13 +51,13 @@ export declare class DamageDetectionService {
         totalDamageRecords: number;
         records: {
             id: string;
+            hasDamageDetected: boolean;
             imageUrl: string;
             uploadedAt: Date;
             isCurrent: boolean;
             version: number;
             imageCategory: import("@prisma/client").$Enums.ImageCategory;
             thumbnailUrl: string | null;
-            hasDamageDetected: boolean;
             damageDetectionData: import("@prisma/client/runtime/client").JsonValue;
         }[];
     }>;

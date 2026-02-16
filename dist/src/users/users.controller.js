@@ -37,8 +37,12 @@ let UsersController = class UsersController {
         return this.usersService.changePassword(userId, dto);
     }
     async uploadCnic(userId, file) {
-        const result = await this.cloudinaryService.uploadImage(file, 'cnic');
+        const result = await this.cloudinaryService.uploadImage(file, 'cnic', 5);
         return this.usersService.uploadCnic(userId, result.secure_url);
+    }
+    async uploadAvatar(userId, file) {
+        const result = await this.cloudinaryService.uploadImage(file, 'avatars', 5);
+        return this.usersService.uploadAvatar(userId, result.secure_url);
     }
     async getDashboardStats(userId) {
         return this.usersService.getDashboardStats(userId);
@@ -82,6 +86,17 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "uploadCnic", null);
+__decorate([
+    (0, common_1.Post)('upload-avatar'),
+    (0, swagger_1.ApiOperation)({ summary: 'Upload profile avatar image' }),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('avatar')),
+    __param(0, (0, decorators_1.CurrentUser)('id')),
+    __param(1, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "uploadAvatar", null);
 __decorate([
     (0, common_1.Get)('dashboard'),
     (0, swagger_1.ApiOperation)({ summary: 'Get user dashboard statistics' }),

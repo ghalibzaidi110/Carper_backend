@@ -29,18 +29,20 @@ export declare class UsersService {
         phoneNumber: string | null;
         city: string | null;
         address: string | null;
-        country: string | null;
-        postalCode: string | null;
+        accountType: import("@prisma/client").$Enums.AccountType;
+        avatarUrl: string | null;
+        updatedAt: Date;
     }>;
     changePassword(userId: string, dto: ChangePasswordDto): Promise<{
         message: string;
     }>;
     uploadCnic(userId: string, cnicImageUrl: string): Promise<{
         message: string;
+        cnicImageUrl: string;
     }>;
-    getDashboardStats(userId: string): Promise<{
-        totalCars: number;
-        activeListing: number;
-        totalRentals: number;
+    uploadAvatar(userId: string, avatarUrl: string): Promise<{
+        message: string;
+        avatarUrl: string;
     }>;
+    getDashboardStats(userId: string): Promise<any>;
 }

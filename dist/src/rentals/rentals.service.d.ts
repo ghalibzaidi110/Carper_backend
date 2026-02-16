@@ -8,16 +8,15 @@ export declare class RentalsService {
     create(userId: string, dto: CreateRentalDto): Promise<{
         car: {
             year: number;
+            registrationNumber: string;
             manufacturer: string;
             modelName: string;
-            registrationNumber: string;
         };
     } & {
         id: string;
         createdAt: Date;
         userId: string;
         updatedAt: Date;
-        currency: string;
         status: import("@prisma/client").$Enums.RentalStatus;
         carId: string;
         renterName: string;
@@ -35,6 +34,7 @@ export declare class RentalsService {
         damageDescription: string | null;
         rentalPrice: import("@prisma/client-runtime-utils").Decimal;
         totalCharges: import("@prisma/client-runtime-utils").Decimal | null;
+        currency: string;
         preInspectionVersion: number | null;
         postInspectionVersion: number | null;
     }>;
@@ -42,9 +42,9 @@ export declare class RentalsService {
         data: ({
             car: {
                 year: number;
+                registrationNumber: string;
                 manufacturer: string;
                 modelName: string;
-                registrationNumber: string;
                 color: string | null;
             };
         } & {
@@ -52,7 +52,6 @@ export declare class RentalsService {
             createdAt: Date;
             userId: string;
             updatedAt: Date;
-            currency: string;
             status: import("@prisma/client").$Enums.RentalStatus;
             carId: string;
             renterName: string;
@@ -70,6 +69,7 @@ export declare class RentalsService {
             damageDescription: string | null;
             rentalPrice: import("@prisma/client-runtime-utils").Decimal;
             totalCharges: import("@prisma/client-runtime-utils").Decimal | null;
+            currency: string;
             preInspectionVersion: number | null;
             postInspectionVersion: number | null;
         })[];
@@ -84,9 +84,9 @@ export declare class RentalsService {
         car: {
             id: string;
             year: number;
+            registrationNumber: string;
             manufacturer: string;
             modelName: string;
-            registrationNumber: string;
             color: string | null;
             mileage: number | null;
         };
@@ -95,7 +95,6 @@ export declare class RentalsService {
         createdAt: Date;
         userId: string;
         updatedAt: Date;
-        currency: string;
         status: import("@prisma/client").$Enums.RentalStatus;
         carId: string;
         renterName: string;
@@ -113,21 +112,21 @@ export declare class RentalsService {
         damageDescription: string | null;
         rentalPrice: import("@prisma/client-runtime-utils").Decimal;
         totalCharges: import("@prisma/client-runtime-utils").Decimal | null;
+        currency: string;
         preInspectionVersion: number | null;
         postInspectionVersion: number | null;
     }>;
     completeRental(id: string, userId: string, dto: CompleteRentalDto): Promise<{
         car: {
+            registrationNumber: string;
             manufacturer: string;
             modelName: string;
-            registrationNumber: string;
         };
     } & {
         id: string;
         createdAt: Date;
         userId: string;
         updatedAt: Date;
-        currency: string;
         status: import("@prisma/client").$Enums.RentalStatus;
         carId: string;
         renterName: string;
@@ -145,6 +144,7 @@ export declare class RentalsService {
         damageDescription: string | null;
         rentalPrice: import("@prisma/client-runtime-utils").Decimal;
         totalCharges: import("@prisma/client-runtime-utils").Decimal | null;
+        currency: string;
         preInspectionVersion: number | null;
         postInspectionVersion: number | null;
     }>;
@@ -153,7 +153,6 @@ export declare class RentalsService {
         createdAt: Date;
         userId: string;
         updatedAt: Date;
-        currency: string;
         status: import("@prisma/client").$Enums.RentalStatus;
         carId: string;
         renterName: string;
@@ -171,6 +170,7 @@ export declare class RentalsService {
         damageDescription: string | null;
         rentalPrice: import("@prisma/client-runtime-utils").Decimal;
         totalCharges: import("@prisma/client-runtime-utils").Decimal | null;
+        currency: string;
         preInspectionVersion: number | null;
         postInspectionVersion: number | null;
     }>;

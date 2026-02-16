@@ -17,10 +17,12 @@ export class CloudinaryService {
    * Upload a single image to Cloudinary.
    * @param file - Express Multer file
    * @param folder - Cloudinary folder path (e.g., 'car-images/registration')
+   * @param maxSizeMB - Maximum file size in MB (default: 10)
    */
   async uploadImage(
     file: Express.Multer.File,
     folder: string,
+    maxSizeMB: number = 10,
   ): Promise<UploadApiResponse> {
     if (!file) {
       throw new BadRequestException('No file provided');
@@ -34,10 +36,12 @@ export class CloudinaryService {
       );
     }
 
-    // Validate file size (10MB max)
-    const maxSize = 10 * 1024 * 1024;
+    // Validate file size with custom limit
+    const maxSize = maxSizeMB * 1024 * 1024;
     if (file.size > maxSize) {
-      throw new BadRequestException('File size exceeds 10MB limit');
+      throw new BadRequestException(
+        `File size exceeds ${maxSizeMB}MB limit`,
+      );
     }
 
     return new Promise((resolve, reject) => {

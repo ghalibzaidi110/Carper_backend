@@ -24,7 +24,7 @@ let CloudinaryService = class CloudinaryService {
             api_secret: this.configService.get('CLOUDINARY_API_SECRET'),
         });
     }
-    async uploadImage(file, folder) {
+    async uploadImage(file, folder, maxSizeMB = 10) {
         if (!file) {
             throw new common_1.BadRequestException('No file provided');
         }
@@ -32,9 +32,9 @@ let CloudinaryService = class CloudinaryService {
         if (!allowedTypes.includes(file.mimetype)) {
             throw new common_1.BadRequestException('Invalid file type. Allowed: JPG, PNG, WEBP');
         }
-        const maxSize = 10 * 1024 * 1024;
+        const maxSize = maxSizeMB * 1024 * 1024;
         if (file.size > maxSize) {
-            throw new common_1.BadRequestException('File size exceeds 10MB limit');
+            throw new common_1.BadRequestException(`File size exceeds ${maxSizeMB}MB limit`);
         }
         return new Promise((resolve, reject) => {
             const uploadStream = cloudinary_1.v2.uploader.upload_stream({

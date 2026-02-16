@@ -80,18 +80,30 @@ let UsersService = class UsersService {
         return user;
     }
     async updateProfile(userId, dto) {
+        if (dto.phoneNumber) {
+            const existingPhone = await this.prisma.user.findFirst({
+                where: {
+                    phoneNumber: dto.phoneNumber,
+                    id: { not: userId },
+                },
+            });
+            if (existingPhone) {
+                throw new common_1.ConflictException('Phone number is already registered by another user');
+            }
+        }
         const user = await this.prisma.user.update({
             where: { id: userId },
             data: dto,
             select: {
                 id: true,
                 email: true,
+                accountType: true,
                 fullName: true,
                 phoneNumber: true,
                 address: true,
                 city: true,
-                country: true,
-                postalCode: true,
+                avatarUrl: true,
+                updatedAt: true,
             },
         });
         return user;
@@ -110,30 +122,105 @@ let UsersService = class UsersService {
         const newHash = await bcrypt.hash(dto.newPassword, 12);
         await this.prisma.user.update({
             where: { id: userId },
-            data: { passwordHash: newHash },
+            data: {
+                passwordHash: newHash,
+                refreshToken: null,
+            },
         });
-        return { message: 'Password changed successfully' };
+        return { message: 'Password changed successfully. Please login again.' };
     }
     async uploadCnic(userId, cnicImageUrl) {
         await this.prisma.user.update({
             where: { id: userId },
-            data: { cnicImageUrl },
+            data: {
+                cnicImageUrl,
+                isVerified: false,
+            },
         });
-        return { message: 'CNIC image uploaded. Awaiting admin verification.' };
+        return {
+            message: 'CNIC image uploaded. Awaiting admin verification.',
+            cnicImageUrl,
+        };
+    }
+    async uploadAvatar(userId, avatarUrl) {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { avatarUrl },
+        });
+        return {
+            message: 'Avatar uploaded successfully',
+            avatarUrl,
+        };
     }
     async getDashboardStats(userId) {
-        const [totalCars, activeListing, totalRentals] = await Promise.all([
-            this.prisma.userCar.count({ where: { userId, isActive: true } }),
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                accountType: true,
+                isVerified: true,
+                cnicImageUrl: true,
+            },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        const [totalCars, activeListings] = await Promise.all([
+            this.prisma.userCar.count({
+                where: { userId, isActive: true }
+            }),
             this.prisma.carListing.count({
                 where: { userId, listingStatus: 'ACTIVE' },
             }),
-            this.prisma.rental.count({ where: { userId } }),
         ]);
-        return {
+        const userCarIds = await this.prisma.userCar.findMany({
+            where: { userId },
+            select: { id: true },
+        });
+        const totalDamageDetections = await this.prisma.carImage.count({
+            where: {
+                carId: { in: userCarIds.map(car => car.id) },
+                hasDamageDetected: true,
+            },
+        });
+        const cnicVerificationStatus = user.cnicImageUrl
+            ? user.isVerified
+                ? 'VERIFIED'
+                : 'PENDING'
+            : 'NOT_UPLOADED';
+        const dashboardData = {
             totalCars,
-            activeListing,
-            totalRentals,
+            activeListings,
+            totalDamageDetections,
+            cnicVerificationStatus,
         };
+        if (user.accountType === 'CAR_RENTAL') {
+            const [activeRentalBookings, rentalData] = await Promise.all([
+                this.prisma.rental.count({
+                    where: {
+                        userId,
+                        status: 'ACTIVE',
+                    },
+                }),
+                this.prisma.rental.findMany({
+                    where: { userId },
+                    select: {
+                        rentalPrice: true,
+                        totalCharges: true,
+                        status: true,
+                    },
+                }),
+            ]);
+            const totalRevenue = rentalData
+                .filter(r => r.status === 'COMPLETED')
+                .reduce((sum, r) => sum + Number(r.totalCharges || r.rentalPrice), 0);
+            const fleetUtilization = totalCars > 0
+                ? ((activeRentalBookings / totalCars) * 100).toFixed(2)
+                : '0.00';
+            dashboardData.activeRentalBookings = activeRentalBookings;
+            dashboardData.totalRevenue = totalRevenue;
+            dashboardData.fleetUtilization = `${fleetUtilization}%`;
+        }
+        return dashboardData;
     }
 };
 exports.UsersService = UsersService;

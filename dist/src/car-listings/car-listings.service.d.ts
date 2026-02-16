@@ -19,12 +19,12 @@ export declare class CarListingsService {
             updatedAt: Date;
             year: number;
             isActive: boolean;
-            manufacturer: string;
-            modelName: string;
-            variant: string | null;
             catalogId: string | null;
             registrationNumber: string;
             vinNumber: string | null;
+            manufacturer: string;
+            modelName: string;
+            variant: string | null;
             color: string | null;
             mileage: number | null;
             condition: import("@prisma/client").$Enums.CarCondition;
@@ -40,8 +40,8 @@ export declare class CarListingsService {
         userId: string;
         updatedAt: Date;
         listingStatus: import("@prisma/client").$Enums.ListingStatus;
-        currency: string;
         carId: string;
+        currency: string;
         askingPrice: import("@prisma/client-runtime-utils").Decimal;
         isNegotiable: boolean;
         viewCount: number;
@@ -56,39 +56,39 @@ export declare class CarListingsService {
                 accountType: import("@prisma/client").$Enums.AccountType;
             };
             car: {
-                images: {
-                    id: string;
-                    imageUrl: string;
-                    uploadedAt: Date;
-                    isCurrent: boolean;
-                    version: number;
-                    imageCategory: import("@prisma/client").$Enums.ImageCategory;
-                    carId: string;
-                    isPermanent: boolean;
-                    thumbnailUrl: string | null;
-                    cloudinaryPublicId: string | null;
-                    fileSize: number | null;
-                    fileType: string | null;
-                    hasDamageDetected: boolean;
-                    damageDetectionData: import("@prisma/client/runtime/client").JsonValue | null;
-                }[];
                 catalog: {
                     bodyType: string | null;
                     fuelType: string | null;
                     transmission: string | null;
                 } | null;
+                images: {
+                    id: string;
+                    hasDamageDetected: boolean;
+                    carId: string;
+                    imageUrl: string;
+                    uploadedAt: Date;
+                    isCurrent: boolean;
+                    version: number;
+                    imageCategory: import("@prisma/client").$Enums.ImageCategory;
+                    isPermanent: boolean;
+                    thumbnailUrl: string | null;
+                    cloudinaryPublicId: string | null;
+                    fileSize: number | null;
+                    fileType: string | null;
+                    damageDetectionData: import("@prisma/client/runtime/client").JsonValue | null;
+                }[];
             } & {
                 id: string;
                 userId: string;
                 updatedAt: Date;
                 year: number;
                 isActive: boolean;
-                manufacturer: string;
-                modelName: string;
-                variant: string | null;
                 catalogId: string | null;
                 registrationNumber: string;
                 vinNumber: string | null;
+                manufacturer: string;
+                modelName: string;
+                variant: string | null;
                 color: string | null;
                 mileage: number | null;
                 condition: import("@prisma/client").$Enums.CarCondition;
@@ -104,8 +104,8 @@ export declare class CarListingsService {
             userId: string;
             updatedAt: Date;
             listingStatus: import("@prisma/client").$Enums.ListingStatus;
-            currency: string;
             carId: string;
+            currency: string;
             askingPrice: import("@prisma/client-runtime-utils").Decimal;
             isNegotiable: boolean;
             viewCount: number;
@@ -127,22 +127,6 @@ export declare class CarListingsService {
             accountType: import("@prisma/client").$Enums.AccountType;
         };
         car: {
-            images: {
-                id: string;
-                imageUrl: string;
-                uploadedAt: Date;
-                isCurrent: boolean;
-                version: number;
-                imageCategory: import("@prisma/client").$Enums.ImageCategory;
-                carId: string;
-                isPermanent: boolean;
-                thumbnailUrl: string | null;
-                cloudinaryPublicId: string | null;
-                fileSize: number | null;
-                fileType: string | null;
-                hasDamageDetected: boolean;
-                damageDetectionData: import("@prisma/client/runtime/client").JsonValue | null;
-            }[];
             catalog: {
                 description: string | null;
                 id: string;
@@ -153,6 +137,7 @@ export declare class CarListingsService {
                 manufacturer: string;
                 modelName: string;
                 variant: string | null;
+                currency: string;
                 bodyType: string | null;
                 fuelType: string | null;
                 transmission: string | null;
@@ -160,20 +145,35 @@ export declare class CarListingsService {
                 seatingCapacity: number | null;
                 basePrice: import("@prisma/client-runtime-utils").Decimal;
                 features: import("@prisma/client/runtime/client").JsonValue | null;
-                currency: string;
             } | null;
+            images: {
+                id: string;
+                hasDamageDetected: boolean;
+                carId: string;
+                imageUrl: string;
+                uploadedAt: Date;
+                isCurrent: boolean;
+                version: number;
+                imageCategory: import("@prisma/client").$Enums.ImageCategory;
+                isPermanent: boolean;
+                thumbnailUrl: string | null;
+                cloudinaryPublicId: string | null;
+                fileSize: number | null;
+                fileType: string | null;
+                damageDetectionData: import("@prisma/client/runtime/client").JsonValue | null;
+            }[];
         } & {
             id: string;
             userId: string;
             updatedAt: Date;
             year: number;
             isActive: boolean;
-            manufacturer: string;
-            modelName: string;
-            variant: string | null;
             catalogId: string | null;
             registrationNumber: string;
             vinNumber: string | null;
+            manufacturer: string;
+            modelName: string;
+            variant: string | null;
             color: string | null;
             mileage: number | null;
             condition: import("@prisma/client").$Enums.CarCondition;
@@ -189,8 +189,8 @@ export declare class CarListingsService {
         userId: string;
         updatedAt: Date;
         listingStatus: import("@prisma/client").$Enums.ListingStatus;
-        currency: string;
         carId: string;
+        currency: string;
         askingPrice: import("@prisma/client-runtime-utils").Decimal;
         isNegotiable: boolean;
         viewCount: number;
@@ -204,8 +204,8 @@ export declare class CarListingsService {
         userId: string;
         updatedAt: Date;
         listingStatus: import("@prisma/client").$Enums.ListingStatus;
-        currency: string;
         carId: string;
+        currency: string;
         askingPrice: import("@prisma/client-runtime-utils").Decimal;
         isNegotiable: boolean;
         viewCount: number;
@@ -219,8 +219,8 @@ export declare class CarListingsService {
         userId: string;
         updatedAt: Date;
         listingStatus: import("@prisma/client").$Enums.ListingStatus;
-        currency: string;
         carId: string;
+        currency: string;
         askingPrice: import("@prisma/client-runtime-utils").Decimal;
         isNegotiable: boolean;
         viewCount: number;
@@ -233,9 +233,9 @@ export declare class CarListingsService {
     getMyListings(userId: string): Promise<({
         car: {
             year: number;
+            registrationNumber: string;
             manufacturer: string;
             modelName: string;
-            registrationNumber: string;
             color: string | null;
         };
     } & {
@@ -245,8 +245,8 @@ export declare class CarListingsService {
         userId: string;
         updatedAt: Date;
         listingStatus: import("@prisma/client").$Enums.ListingStatus;
-        currency: string;
         carId: string;
+        currency: string;
         askingPrice: import("@prisma/client-runtime-utils").Decimal;
         isNegotiable: boolean;
         viewCount: number;
