@@ -15,9 +15,14 @@ export class PrismaService
     
     const adapter = new PrismaPg(pool);
     
+    const logLevels: Array<'query' | 'info' | 'warn' | 'error'> =
+      process.env.PRISMA_LOG_QUERIES === 'true'
+        ? ['query', 'info', 'warn', 'error']
+        : ['warn', 'error'];
+
     super({
       adapter,
-      log: ['query', 'info', 'warn', 'error'],
+      log: logLevels,
     });
   }
 

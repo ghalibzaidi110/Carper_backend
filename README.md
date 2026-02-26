@@ -23,25 +23,106 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+**Carper** — Car Damage Detection & Marketplace Platform (NestJS + Prisma + PostgreSQL).
 
-## Project setup
+---
+
+## How to Run the Backend
+
+### 1. Install dependencies
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+### 2. Environment variables
+
+Create a `.env` file in the project root with at least:
+
+```env
+# Required
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require
+JWT_ACCESS_SECRET=your-access-secret-min-32-chars
+JWT_REFRESH_SECRET=your-refresh-secret-min-32-chars
+
+# Optional (defaults shown)
+JWT_ACCESS_EXPIRATION=15m
+JWT_REFRESH_EXPIRATION=7d
+PORT=3000
+FRONTEND_URL=http://localhost:3001
+
+# For image uploads (required for CNIC, avatar, car images)
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+
+# For damage detection (optional; leave if YOLOv8 service not running)
+DAMAGE_DETECTION_SERVICE_URL=http://localhost:8000
+
+# Email (console = log to terminal only)
+EMAIL_PROVIDER=console
+EMAIL_FROM=noreply@carplatform.pk
+
+# Admin seed
+ADMIN_EMAIL=admin@carplatform.pk
+ADMIN_PASSWORD=Admin@123456
+```
+
+Use a real PostgreSQL URL (e.g. [Neon](https://neon.tech)) or local Postgres.
+
+### 3. Database setup
 
 ```bash
-# development
-$ npm run start
+# Generate Prisma client
+npx prisma generate
 
-# watch mode
-$ npm run start:dev
+# Apply schema to database (creates/updates tables)
+npx prisma db push
+```
 
-# production mode
-$ npm run start:prod
+Or if you use migrations:
+
+```bash
+npx prisma migrate deploy
+```
+
+### 4. Seed admin user (optional)
+
+```bash
+npm run seed
+```
+
+Creates admin: `admin@carplatform.pk` / `Admin@123456`
+
+### 5. Start the server
+
+```bash
+# Development (with hot reload)
+npm run start:dev
+```
+
+Server runs at **http://localhost:3000**  
+API base: **http://localhost:3000/api/v1**  
+Swagger docs: **http://localhost:3000/api/docs**
+
+---
+
+## Other commands
+
+```bash
+# One-time run (no watch)
+npm run start
+
+# Production build and run
+npm run build
+npm run start:prod
+
+# Lint
+npm run lint
+
+# Tests
+npm run test
+npm run test:e2e
 ```
 
 ## Run tests

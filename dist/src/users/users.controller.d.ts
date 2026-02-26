@@ -9,16 +9,16 @@ export declare class UsersController {
         id: string;
         createdAt: Date;
         email: string;
+        accountType: import("@prisma/client").$Enums.AccountType;
+        accountStatus: import("@prisma/client").$Enums.AccountStatus;
         fullName: string;
         phoneNumber: string | null;
-        city: string | null;
         address: string | null;
-        accountType: import("@prisma/client").$Enums.AccountType;
+        city: string | null;
         country: string | null;
+        postalCode: string | null;
         businessName: string | null;
         businessLicense: string | null;
-        accountStatus: import("@prisma/client").$Enums.AccountStatus;
-        postalCode: string | null;
         cnicImageUrl: string | null;
         isVerified: boolean;
         avatarUrl: string | null;
@@ -27,11 +27,11 @@ export declare class UsersController {
     updateProfile(userId: string, dto: UpdateProfileDto): Promise<{
         id: string;
         email: string;
+        accountType: import("@prisma/client").$Enums.AccountType;
         fullName: string;
         phoneNumber: string | null;
-        city: string | null;
         address: string | null;
-        accountType: import("@prisma/client").$Enums.AccountType;
+        city: string | null;
         avatarUrl: string | null;
         updatedAt: Date;
     }>;

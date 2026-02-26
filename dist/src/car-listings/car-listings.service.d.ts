@@ -34,10 +34,10 @@ export declare class CarListingsService {
             registeredAt: Date;
         };
     } & {
-        description: string | null;
-        title: string;
         id: string;
+        title: string;
         userId: string;
+        description: string | null;
         updatedAt: Date;
         listingStatus: import("@prisma/client").$Enums.ListingStatus;
         carId: string;
@@ -51,9 +51,9 @@ export declare class CarListingsService {
     findAll(filters: ListingFilterDto): Promise<{
         items: ({
             user: {
+                accountType: import("@prisma/client").$Enums.AccountType;
                 fullName: string;
                 city: string | null;
-                accountType: import("@prisma/client").$Enums.AccountType;
             };
             car: {
                 catalog: {
@@ -98,10 +98,10 @@ export declare class CarListingsService {
                 registeredAt: Date;
             };
         } & {
-            description: string | null;
-            title: string;
             id: string;
+            title: string;
             userId: string;
+            description: string | null;
             updatedAt: Date;
             listingStatus: import("@prisma/client").$Enums.ListingStatus;
             carId: string;
@@ -122,15 +122,15 @@ export declare class CarListingsService {
     findOne(listingId: string): Promise<{
         user: {
             createdAt: Date;
+            accountType: import("@prisma/client").$Enums.AccountType;
             fullName: string;
             city: string | null;
-            accountType: import("@prisma/client").$Enums.AccountType;
         };
         car: {
             catalog: {
-                description: string | null;
                 id: string;
                 createdAt: Date;
+                description: string | null;
                 updatedAt: Date;
                 year: number;
                 isActive: boolean;
@@ -183,10 +183,10 @@ export declare class CarListingsService {
             registeredAt: Date;
         };
     } & {
-        description: string | null;
-        title: string;
         id: string;
+        title: string;
         userId: string;
+        description: string | null;
         updatedAt: Date;
         listingStatus: import("@prisma/client").$Enums.ListingStatus;
         carId: string;
@@ -198,10 +198,10 @@ export declare class CarListingsService {
         soldAt: Date | null;
     }>;
     update(listingId: string, userId: string, dto: UpdateListingDto): Promise<{
-        description: string | null;
-        title: string;
         id: string;
+        title: string;
         userId: string;
+        description: string | null;
         updatedAt: Date;
         listingStatus: import("@prisma/client").$Enums.ListingStatus;
         carId: string;
@@ -213,10 +213,10 @@ export declare class CarListingsService {
         soldAt: Date | null;
     }>;
     updateStatus(listingId: string, userId: string, dto: UpdateListingStatusDto): Promise<{
-        description: string | null;
-        title: string;
         id: string;
+        title: string;
         userId: string;
+        description: string | null;
         updatedAt: Date;
         listingStatus: import("@prisma/client").$Enums.ListingStatus;
         carId: string;
@@ -239,10 +239,10 @@ export declare class CarListingsService {
             color: string | null;
         };
     } & {
-        description: string | null;
-        title: string;
         id: string;
+        title: string;
         userId: string;
+        description: string | null;
         updatedAt: Date;
         listingStatus: import("@prisma/client").$Enums.ListingStatus;
         carId: string;

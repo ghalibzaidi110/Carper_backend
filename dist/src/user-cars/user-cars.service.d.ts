@@ -83,10 +83,10 @@ export declare class UserCarsService {
     })[]>;
     findOne(carId: string, userId?: string): Promise<{
         listings: {
-            description: string | null;
-            title: string;
             id: string;
+            title: string;
             userId: string;
+            description: string | null;
             updatedAt: Date;
             listingStatus: import("@prisma/client").$Enums.ListingStatus;
             carId: string;
@@ -101,9 +101,9 @@ export declare class UserCarsService {
             rentals: number;
         };
         catalog: {
-            description: string | null;
             id: string;
             createdAt: Date;
+            description: string | null;
             updatedAt: Date;
             year: number;
             isActive: boolean;

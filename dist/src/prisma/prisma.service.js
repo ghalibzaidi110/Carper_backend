@@ -20,9 +20,12 @@ let PrismaService = class PrismaService extends client_1.PrismaClient {
             connectionString: process.env.DATABASE_URL,
         });
         const adapter = new adapter_pg_1.PrismaPg(pool);
+        const logLevels = process.env.PRISMA_LOG_QUERIES === 'true'
+            ? ['query', 'info', 'warn', 'error']
+            : ['warn', 'error'];
         super({
             adapter,
-            log: ['query', 'info', 'warn', 'error'],
+            log: logLevels,
         });
     }
     async onModuleInit() {

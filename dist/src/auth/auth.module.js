@@ -14,6 +14,8 @@ const config_1 = require("@nestjs/config");
 const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
 const strategies_1 = require("./strategies");
+const hasGoogleOAuth = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
+const hasFacebookOAuth = process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET;
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -29,8 +31,8 @@ exports.AuthModule = AuthModule = __decorate([
             auth_service_1.AuthService,
             strategies_1.JwtStrategy,
             strategies_1.JwtRefreshStrategy,
-            strategies_1.GoogleStrategy,
-            strategies_1.FacebookStrategy,
+            ...(hasGoogleOAuth ? [strategies_1.GoogleStrategy] : []),
+            ...(hasFacebookOAuth ? [strategies_1.FacebookStrategy] : []),
         ],
         exports: [auth_service_1.AuthService],
     })

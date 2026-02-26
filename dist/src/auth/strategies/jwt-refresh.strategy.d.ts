@@ -15,11 +15,11 @@ export declare class JwtRefreshStrategy extends JwtRefreshStrategy_base {
         currentRefreshToken: any;
         id: string;
         email: string;
-        fullName: string;
         accountType: import("@prisma/client").$Enums.AccountType;
-        refreshToken: string | null;
         accountStatus: import("@prisma/client").$Enums.AccountStatus;
+        fullName: string;
         isVerified: boolean;
+        refreshToken: string | null;
     }>;
 }
 export {};

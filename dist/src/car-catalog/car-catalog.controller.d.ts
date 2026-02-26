@@ -17,9 +17,9 @@ export declare class CarCatalogController {
                 uploadedAt: Date;
             }[];
         } & {
-            description: string | null;
             id: string;
             createdAt: Date;
+            description: string | null;
             updatedAt: Date;
             year: number;
             isActive: boolean;
@@ -61,9 +61,9 @@ export declare class CarCatalogController {
             uploadedAt: Date;
         }[];
     } & {
-        description: string | null;
         id: string;
         createdAt: Date;
+        description: string | null;
         updatedAt: Date;
         year: number;
         isActive: boolean;
@@ -90,9 +90,9 @@ export declare class CarCatalogController {
             uploadedAt: Date;
         }[];
     } & {
-        description: string | null;
         id: string;
         createdAt: Date;
+        description: string | null;
         updatedAt: Date;
         year: number;
         isActive: boolean;
@@ -111,9 +111,9 @@ export declare class CarCatalogController {
     bulkCreate(entries: CreateCatalogDto[]): Promise<{
         count: number;
         entries: {
-            description: string | null;
             id: string;
             createdAt: Date;
+            description: string | null;
             updatedAt: Date;
             year: number;
             isActive: boolean;
@@ -141,9 +141,9 @@ export declare class CarCatalogController {
             uploadedAt: Date;
         }[];
     } & {
-        description: string | null;
         id: string;
         createdAt: Date;
+        description: string | null;
         updatedAt: Date;
         year: number;
         isActive: boolean;
@@ -160,9 +160,9 @@ export declare class CarCatalogController {
         features: import("@prisma/client/runtime/client").JsonValue | null;
     }>;
     remove(id: string): Promise<{
-        description: string | null;
         id: string;
         createdAt: Date;
+        description: string | null;
         updatedAt: Date;
         year: number;
         isActive: boolean;
