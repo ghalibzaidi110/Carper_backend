@@ -3,7 +3,11 @@
 > **Version:** 1.0  
 > **Last Updated:** February 2026  
 > **Platform:** Web Application (Pakistan-focused)  
-> **Currency:** PKR (Pakistani Rupees)
+> **Currency:** PKR (Pakistani Rupees)  
+> **Status:** Backend ~75% Complete | Frontend 0% (Not Started)
+
+**📊 Current Status:** See [CURRENT_STATUS.md](./CURRENT_STATUS.md) for detailed progress tracking.  
+**🚧 Remaining Work:** See [REMAINING_FEATURES.md](./REMAINING_FEATURES.md) for features to be implemented.
 
 ---
 

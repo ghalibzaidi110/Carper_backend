@@ -23,120 +23,180 @@
 
 ## Description
 
-**Carper** — Car Damage Detection & Marketplace Platform (NestJS + Prisma + PostgreSQL).
+**Car Damage Detection & Marketplace Platform - Backend**
 
----
+A NestJS-based REST API for a car damage detection and marketplace platform. This backend provides:
+- AI-powered car damage detection using YOLOv8
+- Car marketplace for buying/selling vehicles
+- Rental management for car rental businesses
+- CNIC verification system
+- User management and authentication
 
-## How to Run the Backend
+**Current Status:** Backend ~75% complete | Frontend 0% (not started)
 
-### 1. Install dependencies
+See [CURRENT_STATUS.md](./docs/CURRENT_STATUS.md) for detailed progress.
 
-```bash
-npm install
-```
+## 🚀 Quick Start
 
-### 2. Environment variables
+### Prerequisites
+- Node.js 18+ 
+- PostgreSQL (or Neon PostgreSQL)
+- Cloudinary account (for image storage)
+- YOLOv8 Python microservice (for damage detection)
 
-Create a `.env` file in the project root with at least:
-
-```env
-# Required
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require
-JWT_ACCESS_SECRET=your-access-secret-min-32-chars
-JWT_REFRESH_SECRET=your-refresh-secret-min-32-chars
-
-# Optional (defaults shown)
-JWT_ACCESS_EXPIRATION=15m
-JWT_REFRESH_EXPIRATION=7d
-PORT=3000
-FRONTEND_URL=http://localhost:3001
-
-# For image uploads (required for CNIC, avatar, car images)
-CLOUDINARY_CLOUD_NAME=your-cloud-name
-CLOUDINARY_API_KEY=your-api-key
-CLOUDINARY_API_SECRET=your-api-secret
-
-# For damage detection (optional; leave if YOLOv8 service not running)
-DAMAGE_DETECTION_SERVICE_URL=http://localhost:8000
-
-# Email (console = log to terminal only)
-EMAIL_PROVIDER=console
-EMAIL_FROM=noreply@carplatform.pk
-
-# Admin seed
-ADMIN_EMAIL=admin@carplatform.pk
-ADMIN_PASSWORD=Admin@123456
-```
-
-Use a real PostgreSQL URL (e.g. [Neon](https://neon.tech)) or local Postgres.
-
-### 3. Database setup
+### Installation
 
 ```bash
+# Install dependencies
+$ npm install
+
+# Setup environment variables
+$ cp .env.example .env
+# Edit .env with your credentials
+
 # Generate Prisma client
-npx prisma generate
+$ npx prisma generate
 
-# Apply schema to database (creates/updates tables)
-npx prisma db push
+# Run database migrations
+$ npx prisma db push
+
+# Seed admin account
+$ npm run seed
+
+# Start development server
+$ npm run start:dev
 ```
 
-Or if you use migrations:
+The API will be available at `http://localhost:3000`  
+Swagger documentation at `http://localhost:3000/api/docs`
+
+## 📋 Project Status
+
+### ✅ Completed (Backend)
+- 14 core modules implemented
+- Authentication (JWT + OAuth)
+- User management & CNIC verification
+- Car catalog, registration, images
+- Marketplace listings
+- Rental management
+- Damage detection integration
+- Admin panel
+- PDF report generation
+
+### ⚠️ In Progress
+- Rate limiting & logging (missing)
+- OCR for CNIC extraction (manual only)
+- Async damage detection processing
+
+### ❌ Remaining
+- Messaging system
+- Cost estimation
+- Bulk import features
+- Comprehensive testing suite
+- Production deployment setup
+- Frontend (not started)
+
+See [REMAINING_FEATURES.md](./docs/REMAINING_FEATURES.md) for details.
+
+## 📚 Documentation
+
+- [Project Overview](./docs/PROJECT_OVERVIEW.md) - High-level project documentation
+- [Current Status](./docs/CURRENT_STATUS.md) - Detailed progress tracking
+- [Development Roadmap](./docs/DEVELOPMENT_ROADMAP.md) - 8-week development plan
+- [Remaining Features](./docs/REMAINING_FEATURES.md) - Features to be implemented
+- [API Reference](./docs/API_REFERENCE.md) - Complete API documentation
+- [Database Schema](./docs/DATABASE_SCHEMA.md) - Database structure
+- [User Flows](./docs/USER_FLOWS.md) - User journey documentation
+
+## 🧪 Testing
 
 ```bash
-npx prisma migrate deploy
-```
-
-### 4. Seed admin user (optional)
-
-```bash
-npm run seed
-```
-
-Creates admin: `admin@carplatform.pk` / `Admin@123456`
-
-### 5. Start the server
-
-```bash
-# Development (with hot reload)
-npm run start:dev
-```
-
-Server runs at **http://localhost:3000**  
-API base: **http://localhost:3000/api/v1**  
-Swagger docs: **http://localhost:3000/api/docs**
-
----
-
-## Other commands
-
-```bash
-# One-time run (no watch)
-npm run start
-
-# Production build and run
-npm run build
-npm run start:prod
-
-# Lint
-npm run lint
-
-# Tests
-npm run test
-npm run test:e2e
-```
-
-## Run tests
-
-```bash
-# unit tests
+# Unit tests (not yet implemented)
 $ npm run test
 
-# e2e tests
+# E2E tests (placeholder only)
 $ npm run test:e2e
 
-# test coverage
+# Test coverage (target: 80%+)
 $ npm run test:cov
 ```
+
+**Note:** Comprehensive testing suite is planned but not yet implemented. See [REMAINING_FEATURES.md](./docs/REMAINING_FEATURES.md#6-testing-suite).
+
+## 🏗️ Project Structure
+
+```
+backend/
+├── prisma/
+│   ├── schema.prisma          # Database schema
+│   └── seed.ts                # Admin seed script
+├── src/
+│   ├── auth/                  # Authentication module
+│   ├── users/                  # User management
+│   ├── car-catalog/           # Car catalog (admin)
+│   ├── user-cars/             # User car registration
+│   ├── car-images/            # Image management
+│   ├── car-listings/          # Marketplace
+│   ├── rentals/               # Rental management
+│   ├── damage-detection/      # YOLOv8 integration
+│   ├── admin/                 # Admin panel
+│   ├── notifications/         # In-app notifications
+│   ├── pdf/                   # PDF generation
+│   └── common/                # Shared utilities
+└── docs/                      # Documentation
+```
+
+## 🔧 Environment Variables
+
+See [PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md#12-environment-variables) for complete list.
+
+Required variables:
+- `DATABASE_URL` - PostgreSQL connection string
+- `JWT_ACCESS_SECRET` & `JWT_REFRESH_SECRET`
+- `CLOUDINARY_*` - Cloudinary credentials
+- `DAMAGE_DETECTION_SERVICE_URL` - YOLOv8 service URL
+- `FRONTEND_URL` - Frontend URL for CORS
+
+## 📊 API Endpoints
+
+52+ REST API endpoints across 11 modules:
+- Authentication (8 endpoints)
+- Users (6 endpoints)
+- Car Catalog (5 endpoints)
+- User Cars (5 endpoints)
+- Car Images (8 endpoints)
+- Car Listings (6 endpoints)
+- Rentals (7 endpoints)
+- Damage Detection (4 endpoints)
+- Notifications (5 endpoints)
+- PDF Reports (2 endpoints)
+- Admin (6 endpoints)
+
+Full API documentation: [API_REFERENCE.md](./docs/API_REFERENCE.md)  
+Interactive Swagger: `http://localhost:3000/api/docs`
+
+## 🚧 Next Steps
+
+1. **Immediate (Week 1)**
+   - Add rate limiting middleware
+   - Add request/response logging
+   - Create health check endpoint
+
+2. **Short-term (Week 2)**
+   - Implement OCR for CNIC extraction
+   - Start basic testing suite
+
+3. **Medium-term (Week 5)**
+   - Messaging system
+   - Cost estimation feature
+   - Bulk import features
+
+4. **Long-term**
+   - Comprehensive testing (80%+ coverage)
+   - Production deployment
+   - Frontend development
+
+See [DEVELOPMENT_ROADMAP.md](./docs/DEVELOPMENT_ROADMAP.md) for detailed timeline.
 
 ## Deployment
 
