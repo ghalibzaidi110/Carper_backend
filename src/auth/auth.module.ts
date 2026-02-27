@@ -11,12 +11,6 @@ import {
   FacebookStrategy,
 } from './strategies';
 
-// Only register OAuth strategies when credentials are set (avoids "OAuth2Strategy requires clientID" on startup)
-const hasGoogleOAuth =
-  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
-const hasFacebookOAuth =
-  process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET;
-
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
@@ -28,8 +22,8 @@ const hasFacebookOAuth =
     AuthService,
     JwtStrategy,
     JwtRefreshStrategy,
-    ...(hasGoogleOAuth ? [GoogleStrategy] : []),
-    ...(hasFacebookOAuth ? [FacebookStrategy] : []),
+    GoogleStrategy,
+    FacebookStrategy,
   ],
   exports: [AuthService],
 })

@@ -1,5 +1,6 @@
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, RefreshTokenDto } from './dto';
+import { RegisterDto, LoginDto, RefreshTokenDto, CompleteGoogleSignupDto } from './dto';
 import { ConfigService } from '@nestjs/config';
 export declare class AuthController {
     private authService;
@@ -22,6 +23,14 @@ export declare class AuthController {
     }>;
     logout(userId: string): Promise<{
         message: string;
+    }>;
+    googleAuth(): Promise<void>;
+    googleAuthCallback(req: Request, res: Response): Promise<void>;
+    completeGoogleSignup(dto: CompleteGoogleSignupDto): Promise<{
+        accessToken: string;
+        refreshToken: string;
+        message: string;
+        user: any;
     }>;
     getMe(user: any): Promise<any>;
 }

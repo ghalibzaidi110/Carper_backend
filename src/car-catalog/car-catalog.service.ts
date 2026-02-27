@@ -32,7 +32,7 @@ export class CarCatalogService {
     });
   }
 
-  // ─── BULK CREATE (Admin - CSV import) ─────────────────────────
+  // ─── BULK CREATE (Admin - JSON array) ─────────────────────────
 
   async bulkCreate(entries: CreateCatalogDto[]) {
     const results = await this.prisma.$transaction(
@@ -57,6 +57,124 @@ export class CarCatalogService {
     );
 
     return { count: results.length, entries: results };
+  }
+
+  // ─── BULK IMPORT FROM CSV (Admin) ─────────────────────────────
+
+  async bulkImportFromCSV(csvData: string, validateOnly: boolean = false) {
+    const { parse } = require('csv-parse/sync');
+    const records = parse(csvData, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    });
+
+    const results = {
+      totalRows: records.length,
+      successful: 0,
+      failed: 0,
+      errors: [] as Array<{ row: number; error: string }>,
+      importedEntries: [] as any[],
+    };
+
+    for (let i = 0; i < records.length; i++) {
+      const row = records[i];
+      const rowNumber = i + 2; // +2 because row 1 is header
+
+      try {
+        // Validate required fields
+        this.validateBulkImportRow(row, rowNumber);
+
+        // Check for duplicates
+        const existing = await this.prisma.carCatalog.findFirst({
+          where: {
+            manufacturer: { equals: row.manufacturer, mode: 'insensitive' },
+            modelName: { equals: row.modelName, mode: 'insensitive' },
+            year: parseInt(row.year),
+            variant: row.variant
+              ? { equals: row.variant, mode: 'insensitive' }
+              : null,
+          },
+        });
+
+        if (existing) {
+          throw new BadRequestException(
+            `Duplicate catalog entry: ${row.manufacturer} ${row.modelName} ${row.year} ${row.variant || ''}`,
+          );
+        }
+
+        if (!validateOnly) {
+          const entry = await this.prisma.carCatalog.create({
+            data: {
+              manufacturer: row.manufacturer,
+              modelName: row.modelName,
+              year: parseInt(row.year),
+              variant: row.variant || null,
+              bodyType: row.bodyType || null,
+              fuelType: row.fuelType || null,
+              transmission: row.transmission || null,
+              engineCapacity: row.engineCapacity || null,
+              seatingCapacity: row.seatingCapacity
+                ? parseInt(row.seatingCapacity)
+                : null,
+              basePrice: parseFloat(row.basePrice),
+              description: row.description || null,
+              features: row.features
+                ? row.features.split(',').map((f: string) => f.trim())
+                : [],
+            },
+          });
+
+          results.importedEntries.push(entry);
+        }
+
+        results.successful++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push({
+          row: rowNumber,
+          error: error.message || 'Unknown error',
+        });
+      }
+    }
+
+    return results;
+  }
+
+  private validateBulkImportRow(row: any, rowNumber: number) {
+    const required = ['manufacturer', 'modelName', 'year', 'basePrice'];
+
+    for (const field of required) {
+      if (!row[field] || row[field].trim() === '') {
+        throw new BadRequestException(
+          `Row ${rowNumber}: Missing required field: ${field}`,
+        );
+      }
+    }
+
+    // Validate year
+    const year = parseInt(row.year);
+    if (isNaN(year) || year < 1900 || year > new Date().getFullYear() + 1) {
+      throw new BadRequestException(`Row ${rowNumber}: Invalid year: ${row.year}`);
+    }
+
+    // Validate base price
+    const basePrice = parseFloat(row.basePrice);
+    if (isNaN(basePrice) || basePrice < 0) {
+      throw new BadRequestException(
+        `Row ${rowNumber}: Invalid base price: ${row.basePrice}`,
+      );
+    }
+
+    // Validate seating capacity if provided
+    if (row.seatingCapacity) {
+      const seating = parseInt(row.seatingCapacity);
+      if (isNaN(seating) || seating < 1 || seating > 20) {
+        throw new BadRequestException(
+          `Row ${rowNumber}: Invalid seating capacity: ${row.seatingCapacity}`,
+        );
+      }
+    }
   }
 
   // ─── GET ALL (with filters & pagination) ──────────────────────

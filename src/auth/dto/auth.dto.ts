@@ -127,3 +127,60 @@ export class RefreshTokenDto {
   @IsNotEmpty()
   refreshToken: string;
 }
+
+export class CompleteGoogleSignupDto {
+  @ApiProperty({ description: 'Google ID from OAuth' })
+  @IsString()
+  @IsNotEmpty()
+  googleId: string;
+
+  @ApiProperty({ description: 'Email from Google OAuth' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ description: 'Full name from Google OAuth' })
+  @IsString()
+  @IsNotEmpty()
+  fullName: string;
+
+  @ApiProperty({ required: false, description: 'Avatar URL from Google' })
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
+
+  @ApiProperty({ example: '+923001234567' })
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\+?[1-9]\d{1,14}$/, { 
+    message: 'Please provide a valid phone number with country code' 
+  })
+  phoneNumber: string;
+
+  @ApiProperty({ example: 'Karachi' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(2)
+  city: string;
+
+  @ApiProperty({ example: 'House 123, Street 5' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(10)
+  address: string;
+
+  @ApiProperty({ enum: AccountType })
+  @IsEnum(AccountType)
+  @IsNotEmpty()
+  accountType: AccountType;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  businessName?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  businessLicense?: string;
+}

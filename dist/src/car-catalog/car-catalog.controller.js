@@ -46,6 +46,17 @@ let CarCatalogController = class CarCatalogController {
     async bulkCreate(entries) {
         return this.catalogService.bulkCreate(entries);
     }
+    async bulkImport(file, validateOnly) {
+        if (!file) {
+            throw new common_1.BadRequestException('CSV file is required');
+        }
+        if (!file.mimetype.includes('csv') && !file.originalname.endsWith('.csv')) {
+            throw new common_1.BadRequestException('File must be a CSV file');
+        }
+        const csvData = file.buffer.toString('utf-8');
+        const shouldValidateOnly = validateOnly === 'true';
+        return this.catalogService.bulkImportFromCSV(csvData, shouldValidateOnly);
+    }
     async update(id, dto) {
         return this.catalogService.update(id, dto);
     }
@@ -107,12 +118,45 @@ __decorate([
     (0, common_1.Post)('bulk'),
     (0, decorators_1.Roles)(client_1.AccountType.ADMIN),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Bulk add cars to catalog (Admin)' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Bulk add cars to catalog from JSON array (Admin)' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Array]),
     __metadata("design:returntype", Promise)
 ], CarCatalogController.prototype, "bulkCreate", null);
+__decorate([
+    (0, common_1.Post)('bulk-import'),
+    (0, decorators_1.Roles)(client_1.AccountType.ADMIN),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Bulk import cars to catalog from CSV (Admin)',
+        description: 'Upload a CSV file to import multiple catalog entries. CSV format: manufacturer,modelName,year,variant,bodyType,fuelType,transmission,engineCapacity,seatingCapacity,basePrice,description,features',
+    }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'CSV file with catalog data',
+                },
+                validateOnly: {
+                    type: 'boolean',
+                    description: 'If true, only validates without importing',
+                    default: false,
+                },
+            },
+        },
+    }),
+    __param(0, (0, common_1.UploadedFile)()),
+    __param(1, (0, common_1.Query)('validateOnly')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], CarCatalogController.prototype, "bulkImport", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, decorators_1.Roles)(client_1.AccountType.ADMIN),

@@ -9,6 +9,7 @@ import {
   Query,
   UploadedFile,
   UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -16,6 +17,7 @@ import {
   ApiOperation,
   ApiBearerAuth,
   ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { AccountType } from '@prisma/client';
 import { CarCatalogService } from './car-catalog.service';
@@ -74,9 +76,54 @@ export class CarCatalogController {
   @Post('bulk')
   @Roles(AccountType.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Bulk add cars to catalog (Admin)' })
+  @ApiOperation({ summary: 'Bulk add cars to catalog from JSON array (Admin)' })
   async bulkCreate(@Body() entries: CreateCatalogDto[]) {
     return this.catalogService.bulkCreate(entries);
+  }
+
+  @Post('bulk-import')
+  @Roles(AccountType.ADMIN)
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({
+    summary: 'Bulk import cars to catalog from CSV (Admin)',
+    description:
+      'Upload a CSV file to import multiple catalog entries. CSV format: manufacturer,modelName,year,variant,bodyType,fuelType,transmission,engineCapacity,seatingCapacity,basePrice,description,features',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'CSV file with catalog data',
+        },
+        validateOnly: {
+          type: 'boolean',
+          description: 'If true, only validates without importing',
+          default: false,
+        },
+      },
+    },
+  })
+  async bulkImport(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('validateOnly') validateOnly?: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException('CSV file is required');
+    }
+
+    if (!file.mimetype.includes('csv') && !file.originalname.endsWith('.csv')) {
+      throw new BadRequestException('File must be a CSV file');
+    }
+
+    const csvData = file.buffer.toString('utf-8');
+    const shouldValidateOnly = validateOnly === 'true';
+
+    return this.catalogService.bulkImportFromCSV(csvData, shouldValidateOnly);
   }
 
   @Patch(':id')

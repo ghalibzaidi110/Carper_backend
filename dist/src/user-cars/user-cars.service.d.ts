@@ -83,10 +83,10 @@ export declare class UserCarsService {
     })[]>;
     findOne(carId: string, userId?: string): Promise<{
         listings: {
-            id: string;
-            title: string;
-            userId: string;
             description: string | null;
+            title: string;
+            id: string;
+            userId: string;
             updatedAt: Date;
             listingStatus: import("@prisma/client").$Enums.ListingStatus;
             carId: string;
@@ -101,9 +101,9 @@ export declare class UserCarsService {
             rentals: number;
         };
         catalog: {
+            description: string | null;
             id: string;
             createdAt: Date;
-            description: string | null;
             updatedAt: Date;
             year: number;
             isActive: boolean;
@@ -196,4 +196,15 @@ export declare class UserCarsService {
         registeredAt: Date;
     }>;
     hasRegistrationImages(carId: string): Promise<boolean>;
+    bulkImportCars(userId: string, csvData: string, validateOnly?: boolean): Promise<{
+        totalRows: any;
+        successful: number;
+        failed: number;
+        errors: Array<{
+            row: number;
+            error: string;
+        }>;
+        importedCars: any[];
+    }>;
+    private validateBulkImportRow;
 }

@@ -5,13 +5,13 @@ export declare class NotificationsController {
     constructor(notificationsService: NotificationsService);
     findAll(userId: string, filters: NotificationFilterDto): Promise<{
         data: {
-            id: string;
             title: string;
             message: string;
             type: import("@prisma/client").$Enums.NotificationType;
-            isRead: boolean;
             actionUrl: string | null;
             metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            id: string;
+            isRead: boolean;
             createdAt: Date;
             userId: string;
         }[];
@@ -27,13 +27,13 @@ export declare class NotificationsController {
         unreadCount: number;
     }>;
     markAsRead(id: string, userId: string): Promise<{
-        id: string;
         title: string;
         message: string;
         type: import("@prisma/client").$Enums.NotificationType;
-        isRead: boolean;
         actionUrl: string | null;
         metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        id: string;
+        isRead: boolean;
         createdAt: Date;
         userId: string;
     }>;

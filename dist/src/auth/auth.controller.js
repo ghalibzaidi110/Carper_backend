@@ -18,6 +18,7 @@ const swagger_1 = require("@nestjs/swagger");
 const auth_service_1 = require("./auth.service");
 const dto_1 = require("./dto");
 const guards_1 = require("./guards");
+const google_auth_check_guard_1 = require("./guards/google-auth-check.guard");
 const decorators_1 = require("../common/decorators");
 const config_1 = require("@nestjs/config");
 let AuthController = class AuthController {
@@ -38,6 +39,24 @@ let AuthController = class AuthController {
     }
     async logout(userId) {
         return this.authService.logout(userId);
+    }
+    async googleAuth() {
+    }
+    async googleAuthCallback(req, res) {
+        const result = await this.authService.googleLogin(req.user);
+        const frontendUrl = this.configService.get('FRONTEND_URL');
+        if (result.isNewUser) {
+            const googleData = encodeURIComponent(JSON.stringify(result.googleData));
+            res.redirect(`${frontendUrl}/auth/signup?google=true&data=${googleData}`);
+        }
+        else {
+            const existingUserResult = result;
+            res.redirect(`${frontendUrl}/auth/callback?accessToken=${existingUserResult.accessToken}&refreshToken=${existingUserResult.refreshToken}`);
+        }
+    }
+    async completeGoogleSignup(dto) {
+        const { googleId, email, fullName, avatarUrl, phoneNumber, city, address, accountType, businessName, businessLicense } = dto;
+        return this.authService.completeGoogleSignup({ googleId, email, fullName, avatarUrl }, { phoneNumber, city, address, accountType, businessName, businessLicense });
     }
     async getMe(user) {
         return user;
@@ -91,6 +110,39 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
+__decorate([
+    (0, decorators_1.Public)(),
+    (0, common_1.Get)('google'),
+    (0, common_1.UseGuards)(google_auth_check_guard_1.GoogleAuthCheckGuard, guards_1.GoogleAuthGuard),
+    (0, swagger_1.ApiOperation)({ summary: 'Initiate Google OAuth login' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "googleAuth", null);
+__decorate([
+    (0, decorators_1.Public)(),
+    (0, common_1.Get)('google/callback'),
+    (0, common_1.UseGuards)(google_auth_check_guard_1.GoogleAuthCheckGuard, guards_1.GoogleAuthGuard),
+    (0, swagger_1.ApiOperation)({ summary: 'Google OAuth callback' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "googleAuthCallback", null);
+__decorate([
+    (0, decorators_1.Public)(),
+    (0, common_1.Post)('google/complete-signup'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Complete signup after Google OAuth',
+        description: 'After Google OAuth redirects to signup page, user completes registration with additional required fields (phone, city, address, account type)'
+    }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [dto_1.CompleteGoogleSignupDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "completeGoogleSignup", null);
 __decorate([
     (0, common_1.Get)('me'),
     (0, swagger_1.ApiBearerAuth)(),

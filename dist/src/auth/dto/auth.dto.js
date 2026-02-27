@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RefreshTokenDto = exports.LoginDto = exports.RegisterDto = void 0;
+exports.CompleteGoogleSignupDto = exports.RefreshTokenDto = exports.LoginDto = exports.RegisterDto = void 0;
 const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 const client_1 = require("@prisma/client");
@@ -155,4 +155,82 @@ __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], RefreshTokenDto.prototype, "refreshToken", void 0);
+class CompleteGoogleSignupDto {
+    googleId;
+    email;
+    fullName;
+    avatarUrl;
+    phoneNumber;
+    city;
+    address;
+    accountType;
+    businessName;
+    businessLicense;
+}
+exports.CompleteGoogleSignupDto = CompleteGoogleSignupDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Google ID from OAuth' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], CompleteGoogleSignupDto.prototype, "googleId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Email from Google OAuth' }),
+    (0, class_validator_1.IsEmail)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], CompleteGoogleSignupDto.prototype, "email", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Full name from Google OAuth' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], CompleteGoogleSignupDto.prototype, "fullName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false, description: 'Avatar URL from Google' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CompleteGoogleSignupDto.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '+923001234567' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.Matches)(/^\+?[1-9]\d{1,14}$/, {
+        message: 'Please provide a valid phone number with country code'
+    }),
+    __metadata("design:type", String)
+], CompleteGoogleSignupDto.prototype, "phoneNumber", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Karachi' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.MinLength)(2),
+    __metadata("design:type", String)
+], CompleteGoogleSignupDto.prototype, "city", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'House 123, Street 5' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.MinLength)(10),
+    __metadata("design:type", String)
+], CompleteGoogleSignupDto.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: client_1.AccountType }),
+    (0, class_validator_1.IsEnum)(client_1.AccountType),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], CompleteGoogleSignupDto.prototype, "accountType", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CompleteGoogleSignupDto.prototype, "businessName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CompleteGoogleSignupDto.prototype, "businessLicense", void 0);
 //# sourceMappingURL=auth.dto.js.map

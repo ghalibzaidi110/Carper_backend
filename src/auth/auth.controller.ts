@@ -12,8 +12,9 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, RefreshTokenDto } from './dto';
+import { RegisterDto, LoginDto, RefreshTokenDto, CompleteGoogleSignupDto } from './dto';
 import { JwtAuthGuard, JwtRefreshGuard, GoogleAuthGuard, FacebookAuthGuard } from './guards';
+import { GoogleAuthCheckGuard } from './guards/google-auth-check.guard';
 import { Public, CurrentUser } from '../common/decorators';
 import { ConfigService } from '@nestjs/config';
 
@@ -63,29 +64,55 @@ export class AuthController {
     return this.authService.logout(userId);
   }
 
-  // ─── GOOGLE OAUTH (DISABLED) ─────────────────────────────────
-  // Uncomment and configure when OAuth is needed
+  // ─── GOOGLE OAUTH ────────────────────────────────────────────
 
-  // @Public()
-  // @Get('google')
-  // @UseGuards(GoogleAuthGuard)
-  // @ApiOperation({ summary: 'Initiate Google OAuth login' })
-  // async googleAuth() {
-  //   // Guard redirects to Google
-  // }
+  @Public()
+  @Get('google')
+  @UseGuards(GoogleAuthCheckGuard, GoogleAuthGuard)
+  @ApiOperation({ summary: 'Initiate Google OAuth login' })
+  async googleAuth() {
+    // Guard redirects to Google
+  }
 
-  // @Public()
-  // @Get('google/callback')
-  // @UseGuards(GoogleAuthGuard)
-  // @ApiOperation({ summary: 'Google OAuth callback' })
-  // async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-  //   const result = await this.authService.googleLogin(req.user as any);
-  //   const frontendUrl = this.configService.get<string>('FRONTEND_URL');
-  //   // Redirect to frontend with tokens as query params
-  //   res.redirect(
-  //     `${frontendUrl}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`,
-  //   );
-  // }
+  @Public()
+  @Get('google/callback')
+  @UseGuards(GoogleAuthCheckGuard, GoogleAuthGuard)
+  @ApiOperation({ summary: 'Google OAuth callback' })
+  async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
+    const result = await this.authService.googleLogin(req.user as any);
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+
+    if (result.isNewUser) {
+      // New user - redirect to signup page with Google data
+      const googleData = encodeURIComponent(JSON.stringify(result.googleData));
+      res.redirect(
+        `${frontendUrl}/auth/signup?google=true&data=${googleData}`,
+      );
+    } else {
+      // Existing user - redirect with tokens
+      const existingUserResult = result as { accessToken: string; refreshToken: string; isNewUser: false; user: any };
+      res.redirect(
+        `${frontendUrl}/auth/callback?accessToken=${existingUserResult.accessToken}&refreshToken=${existingUserResult.refreshToken}`,
+      );
+    }
+  }
+
+  @Public()
+  @Post('google/complete-signup')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ 
+    summary: 'Complete signup after Google OAuth',
+    description: 'After Google OAuth redirects to signup page, user completes registration with additional required fields (phone, city, address, account type)'
+  })
+  async completeGoogleSignup(@Body() dto: CompleteGoogleSignupDto) {
+    // Extract Google data and additional fields
+    const { googleId, email, fullName, avatarUrl, phoneNumber, city, address, accountType, businessName, businessLicense } = dto;
+    
+    return this.authService.completeGoogleSignup(
+      { googleId, email, fullName, avatarUrl },
+      { phoneNumber, city, address, accountType, businessName, businessLicense },
+    );
+  }
 
   // ─── FACEBOOK OAUTH (DISABLED) ────────────────────────────────
 
