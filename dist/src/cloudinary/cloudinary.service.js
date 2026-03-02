@@ -36,22 +36,31 @@ let CloudinaryService = class CloudinaryService {
         if (file.size > maxSize) {
             throw new common_1.BadRequestException(`File size exceeds ${maxSizeMB}MB limit`);
         }
-        return new Promise((resolve, reject) => {
-            const uploadStream = cloudinary_1.v2.uploader.upload_stream({
-                folder: `car-platform/${folder}`,
-                resource_type: 'image',
-                transformation: [
-                    { width: 1920, height: 1080, crop: 'limit' },
-                    { quality: 'auto', fetch_format: 'auto' },
-                ],
-            }, (error, result) => {
-                if (error)
-                    return reject(error);
-                resolve(result);
+        try {
+            return await new Promise((resolve, reject) => {
+                const uploadStream = cloudinary_1.v2.uploader.upload_stream({
+                    folder: `car-platform/${folder}`,
+                    resource_type: 'image',
+                    transformation: [
+                        { width: 1920, height: 1080, crop: 'limit' },
+                        { quality: 'auto', fetch_format: 'auto' },
+                    ],
+                }, (error, result) => {
+                    if (error)
+                        return reject(error);
+                    resolve(result);
+                });
+                const stream = stream_1.Readable.from(file.buffer);
+                stream.pipe(uploadStream);
             });
-            const stream = stream_1.Readable.from(file.buffer);
-            stream.pipe(uploadStream);
-        });
+        }
+        catch (err) {
+            const msg = err?.message || String(err);
+            if (msg.includes('Invalid cloud_name') || err?.http_code === 401) {
+                throw new common_1.BadRequestException('Invalid Cloudinary configuration. Check CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env. Use the exact values from your Cloudinary Dashboard.');
+            }
+            throw new common_1.BadRequestException(err?.message ? `Image upload failed: ${err.message}` : 'Image upload failed');
+        }
     }
     async uploadMultipleImages(files, folder) {
         const uploads = files.map((file) => this.uploadImage(file, folder));

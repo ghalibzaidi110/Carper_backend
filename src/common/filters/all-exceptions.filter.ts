@@ -30,10 +30,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       message = 'Internal server error';
-      this.logger.error(
-        `Unhandled exception: ${exception}`,
-        exception instanceof Error ? exception.stack : undefined,
-      );
+
+      const errMessage =
+        exception instanceof Error
+          ? exception.message
+          : typeof exception === 'object' && exception !== null
+            ? JSON.stringify(exception)
+            : String(exception);
+      const errStack = exception instanceof Error ? exception.stack : undefined;
+      this.logger.error(`Unhandled exception: ${errMessage}`, errStack);
     }
 
     response.status(status).json({

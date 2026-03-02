@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DamageDetectionController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const swagger_1 = require("@nestjs/swagger");
 const damage_detection_service_1 = require("./damage-detection.service");
 const dto_1 = require("./dto");
@@ -22,6 +23,14 @@ let DamageDetectionController = class DamageDetectionController {
     detectionService;
     constructor(detectionService) {
         this.detectionService = detectionService;
+    }
+    async scanByUpload(files) {
+        const list = files?.images?.length
+            ? files.images
+            : files?.image?.length
+                ? files.image
+                : [];
+        return this.detectionService.scanByUpload(list);
     }
     async detectOnImage(dto, userId) {
         return this.detectionService.detectOnImage(dto.imageId, userId);
@@ -34,6 +43,40 @@ let DamageDetectionController = class DamageDetectionController {
     }
 };
 exports.DamageDetectionController = DamageDetectionController;
+__decorate([
+    (0, common_1.Post)('scan'),
+    (0, decorators_1.Public)(),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileFieldsInterceptor)([
+        { name: 'images', maxCount: 10 },
+        { name: 'image', maxCount: 1 },
+    ])),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Upload image(s) for damage detection',
+        description: 'Accepts one or more images. When Python service is not available, returns processed images (with visual differentiation) and dummy damage data. When Python is available, calls the detection API and returns real results.',
+    }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                images: {
+                    type: 'array',
+                    items: { type: 'string', format: 'binary' },
+                    description: 'Multiple images (max 10)',
+                },
+                image: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'Single image (alternative to images)',
+                },
+            },
+        },
+    }),
+    __param(0, (0, common_1.UploadedFiles)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], DamageDetectionController.prototype, "scanByUpload", null);
 __decorate([
     (0, common_1.Post)('image'),
     (0, decorators_1.RequireVerification)(),
