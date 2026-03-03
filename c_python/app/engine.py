@@ -34,7 +34,7 @@ def _load_model():
     if _model is not None:
         return _model
     try:
-        from ultralytics import YOLO
+        from ultralytics import YOLO  # type: ignore[import-untyped]
     except ImportError as e:
         raise RuntimeError(
             "Install ultralytics: pip install ultralytics"
