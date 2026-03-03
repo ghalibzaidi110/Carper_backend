@@ -40,14 +40,14 @@ export declare class DamageDetectionController {
         totalDamageRecords: number;
         records: {
             id: string;
-            imageCategory: import("@prisma/client").$Enums.ImageCategory;
-            imageUrl: string;
-            thumbnailUrl: string | null;
-            version: number;
-            isCurrent: boolean;
             hasDamageDetected: boolean;
-            damageDetectionData: import("@prisma/client/runtime/client").JsonValue;
+            imageUrl: string;
             uploadedAt: Date;
+            isCurrent: boolean;
+            version: number;
+            imageCategory: import("@prisma/client").$Enums.ImageCategory;
+            thumbnailUrl: string | null;
+            damageDetectionData: import("@prisma/client/runtime/client").JsonValue;
         }[];
     }>;
 }

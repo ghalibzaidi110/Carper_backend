@@ -9,8 +9,8 @@ export declare class CarCatalogController {
         items: ({
             images: {
                 id: string;
-                isPrimary: boolean;
                 catalogId: string;
+                isPrimary: boolean;
                 imageUrl: string;
                 imageOrder: number;
                 altText: string | null;
@@ -21,19 +21,19 @@ export declare class CarCatalogController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            year: number;
+            isActive: boolean;
             manufacturer: string;
             modelName: string;
-            year: number;
             variant: string | null;
+            currency: string;
             bodyType: string | null;
             fuelType: string | null;
             transmission: string | null;
             engineCapacity: string | null;
             seatingCapacity: number | null;
             basePrice: import("@prisma/client-runtime-utils").Decimal;
-            currency: string;
             features: import("@prisma/client/runtime/client").JsonValue | null;
-            isActive: boolean;
         })[];
         meta: {
             total: number;
@@ -45,16 +45,16 @@ export declare class CarCatalogController {
     getManufacturers(): Promise<string[]>;
     getModelsByManufacturer(manufacturer: string): Promise<{
         id: string;
-        modelName: string;
         year: number;
+        modelName: string;
         variant: string | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
     }[]>;
     findOne(id: string): Promise<{
         images: {
             id: string;
-            isPrimary: boolean;
             catalogId: string;
+            isPrimary: boolean;
             imageUrl: string;
             imageOrder: number;
             altText: string | null;
@@ -65,25 +65,25 @@ export declare class CarCatalogController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        year: number;
+        isActive: boolean;
         manufacturer: string;
         modelName: string;
-        year: number;
         variant: string | null;
+        currency: string;
         bodyType: string | null;
         fuelType: string | null;
         transmission: string | null;
         engineCapacity: string | null;
         seatingCapacity: number | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
-        currency: string;
         features: import("@prisma/client/runtime/client").JsonValue | null;
-        isActive: boolean;
     }>;
     create(dto: CreateCatalogDto): Promise<{
         images: {
             id: string;
-            isPrimary: boolean;
             catalogId: string;
+            isPrimary: boolean;
             imageUrl: string;
             imageOrder: number;
             altText: string | null;
@@ -94,19 +94,19 @@ export declare class CarCatalogController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        year: number;
+        isActive: boolean;
         manufacturer: string;
         modelName: string;
-        year: number;
         variant: string | null;
+        currency: string;
         bodyType: string | null;
         fuelType: string | null;
         transmission: string | null;
         engineCapacity: string | null;
         seatingCapacity: number | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
-        currency: string;
         features: import("@prisma/client/runtime/client").JsonValue | null;
-        isActive: boolean;
     }>;
     bulkCreate(entries: CreateCatalogDto[]): Promise<{
         count: number;
@@ -115,19 +115,19 @@ export declare class CarCatalogController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            year: number;
+            isActive: boolean;
             manufacturer: string;
             modelName: string;
-            year: number;
             variant: string | null;
+            currency: string;
             bodyType: string | null;
             fuelType: string | null;
             transmission: string | null;
             engineCapacity: string | null;
             seatingCapacity: number | null;
             basePrice: import("@prisma/client-runtime-utils").Decimal;
-            currency: string;
             features: import("@prisma/client/runtime/client").JsonValue | null;
-            isActive: boolean;
         }[];
     }>;
     bulkImport(file: Express.Multer.File, validateOnly?: string): Promise<{
@@ -143,8 +143,8 @@ export declare class CarCatalogController {
     update(id: string, dto: UpdateCatalogDto): Promise<{
         images: {
             id: string;
-            isPrimary: boolean;
             catalogId: string;
+            isPrimary: boolean;
             imageUrl: string;
             imageOrder: number;
             altText: string | null;
@@ -155,43 +155,43 @@ export declare class CarCatalogController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        year: number;
+        isActive: boolean;
         manufacturer: string;
         modelName: string;
-        year: number;
         variant: string | null;
+        currency: string;
         bodyType: string | null;
         fuelType: string | null;
         transmission: string | null;
         engineCapacity: string | null;
         seatingCapacity: number | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
-        currency: string;
         features: import("@prisma/client/runtime/client").JsonValue | null;
-        isActive: boolean;
     }>;
     remove(id: string): Promise<{
         description: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        year: number;
+        isActive: boolean;
         manufacturer: string;
         modelName: string;
-        year: number;
         variant: string | null;
+        currency: string;
         bodyType: string | null;
         fuelType: string | null;
         transmission: string | null;
         engineCapacity: string | null;
         seatingCapacity: number | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
-        currency: string;
         features: import("@prisma/client/runtime/client").JsonValue | null;
-        isActive: boolean;
     }>;
     uploadImage(catalogId: string, file: Express.Multer.File, isPrimary: string, altText: string): Promise<{
         id: string;
-        isPrimary: boolean;
         catalogId: string;
+        isPrimary: boolean;
         imageUrl: string;
         imageOrder: number;
         altText: string | null;
