@@ -12,8 +12,11 @@ FastAPI service used by the Nest backend for car damage detection. Nest calls `D
    pip install -r requirements.txt
    ```
 
-2. **Env**
-   - Copy `.env.example` to `.env` and set `PORT` (default 8000) and optional `MODEL_PATH` for YOLOv8.
+2. **Model**
+   - The app uses `weights/best.pt` inside `c_python/` (copy from `yolov8n_balanced/weights/best.pt` if setting up elsewhere).
+
+3. **Env**
+   - Copy `.env.example` to `.env`. `MODEL_PATH` defaults to `weights/best.pt`.
    - Nest expects this service at `http://localhost:8000` by default.
 
 ## Run
@@ -26,6 +29,7 @@ python -m app.main
 
 - **Health:** `GET /health`
 - **Detect:** `POST /detect` with body `{ "image_url": "https://..." }`  
-  Response: `{ "has_damage", "confidence", "detections", "processed_image_url" }`
+  Response: `{ "has_damage", "confidence", "detections", "processed_image_url" }`.  
+  `processed_image_url` is the **annotated image** (same image with damage boxes and labels drawn), as a base64 data URL.
 
 Without `MODEL_PATH`, the API returns stub responses so Nest can run end-to-end.

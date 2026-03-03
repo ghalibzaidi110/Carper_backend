@@ -3,6 +3,7 @@ Damage detection FastAPI service.
 Nest backend calls POST /detect with { "image_url": "<url>" } and expects
 { has_damage, confidence, detections, processed_image_url }.
 """
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -24,6 +25,12 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     if settings.model_path:
         logger.info("Loading model from %s", settings.model_path)
+        try:
+            from app.engine import _load_model
+            await asyncio.to_thread(_load_model)
+        except Exception as e:
+            logger.error("Failed to load YOLO model: %s", e)
+            raise
     else:
         logger.info("No MODEL_PATH set; using stub detection")
     yield
