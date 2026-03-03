@@ -14,9 +14,9 @@ export declare class CarCatalogService {
             uploadedAt: Date;
         }[];
     } & {
+        description: string | null;
         id: string;
         createdAt: Date;
-        description: string | null;
         updatedAt: Date;
         year: number;
         isActive: boolean;
@@ -35,9 +35,9 @@ export declare class CarCatalogService {
     bulkCreate(entries: CreateCatalogDto[]): Promise<{
         count: number;
         entries: {
+            description: string | null;
             id: string;
             createdAt: Date;
-            description: string | null;
             updatedAt: Date;
             year: number;
             isActive: boolean;
@@ -54,6 +54,17 @@ export declare class CarCatalogService {
             features: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
     }>;
+    bulkImportFromCSV(csvData: string, validateOnly?: boolean): Promise<{
+        totalRows: any;
+        successful: number;
+        failed: number;
+        errors: Array<{
+            row: number;
+            error: string;
+        }>;
+        importedEntries: any[];
+    }>;
+    private validateBulkImportRow;
     findAll(filters: CatalogFilterDto): Promise<{
         items: ({
             images: {
@@ -66,9 +77,9 @@ export declare class CarCatalogService {
                 uploadedAt: Date;
             }[];
         } & {
+            description: string | null;
             id: string;
             createdAt: Date;
-            description: string | null;
             updatedAt: Date;
             year: number;
             isActive: boolean;
@@ -102,9 +113,9 @@ export declare class CarCatalogService {
             uploadedAt: Date;
         }[];
     } & {
+        description: string | null;
         id: string;
         createdAt: Date;
-        description: string | null;
         updatedAt: Date;
         year: number;
         isActive: boolean;
@@ -131,9 +142,9 @@ export declare class CarCatalogService {
             uploadedAt: Date;
         }[];
     } & {
+        description: string | null;
         id: string;
         createdAt: Date;
-        description: string | null;
         updatedAt: Date;
         year: number;
         isActive: boolean;
@@ -150,9 +161,9 @@ export declare class CarCatalogService {
         features: import("@prisma/client/runtime/client").JsonValue | null;
     }>;
     remove(id: string): Promise<{
+        description: string | null;
         id: string;
         createdAt: Date;
-        description: string | null;
         updatedAt: Date;
         year: number;
         isActive: boolean;

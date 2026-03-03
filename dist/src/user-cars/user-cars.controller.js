@@ -14,10 +14,12 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserCarsController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const swagger_1 = require("@nestjs/swagger");
 const user_cars_service_1 = require("./user-cars.service");
 const dto_1 = require("./dto");
 const decorators_1 = require("../common/decorators");
+const client_1 = require("@prisma/client");
 let UserCarsController = class UserCarsController {
     userCarsService;
     constructor(userCarsService) {
@@ -41,6 +43,17 @@ let UserCarsController = class UserCarsController {
     async checkRegistrationImages(carId) {
         const hasImages = await this.userCarsService.hasRegistrationImages(carId);
         return { hasRegistrationImages: hasImages };
+    }
+    async bulkImport(userId, file, validateOnly) {
+        if (!file) {
+            throw new Error('CSV file is required');
+        }
+        if (!file.mimetype.includes('csv') && !file.originalname.endsWith('.csv')) {
+            throw new Error('File must be a CSV file');
+        }
+        const csvData = file.buffer.toString('utf-8');
+        const shouldValidateOnly = validateOnly === 'true';
+        return this.userCarsService.bulkImportCars(userId, csvData, shouldValidateOnly);
     }
 };
 exports.UserCarsController = UserCarsController;
@@ -97,6 +110,39 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], UserCarsController.prototype, "checkRegistrationImages", null);
+__decorate([
+    (0, common_1.Post)('bulk-import'),
+    (0, decorators_1.Roles)(client_1.AccountType.CAR_RENTAL),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Bulk import cars from CSV (Rental Business only)',
+        description: 'Upload a CSV file to import multiple cars. CSV format: registrationNumber,manufacturer,modelName,year,variant,color,mileage,condition,purchasePrice,vinNumber,purchaseDate',
+    }),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'CSV file with car data',
+                },
+                validateOnly: {
+                    type: 'boolean',
+                    description: 'If true, only validates without importing',
+                    default: false,
+                },
+            },
+        },
+    }),
+    __param(0, (0, decorators_1.CurrentUser)('id')),
+    __param(1, (0, common_1.UploadedFile)()),
+    __param(2, (0, common_1.Query)('validateOnly')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, String]),
+    __metadata("design:returntype", Promise)
+], UserCarsController.prototype, "bulkImport", null);
 exports.UserCarsController = UserCarsController = __decorate([
     (0, swagger_1.ApiTags)('User Cars'),
     (0, swagger_1.ApiBearerAuth)(),

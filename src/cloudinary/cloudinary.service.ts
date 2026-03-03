@@ -44,25 +44,37 @@ export class CloudinaryService {
       );
     }
 
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: `car-platform/${folder}`,
-          resource_type: 'image',
-          transformation: [
-            { width: 1920, height: 1080, crop: 'limit' },
-            { quality: 'auto', fetch_format: 'auto' },
-          ],
-        },
-        (error, result) => {
-          if (error) return reject(error);
-          resolve(result!);
-        },
-      );
+    try {
+      return await new Promise<UploadApiResponse>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: `car-platform/${folder}`,
+            resource_type: 'image',
+            transformation: [
+              { width: 1920, height: 1080, crop: 'limit' },
+              { quality: 'auto', fetch_format: 'auto' },
+            ],
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result!);
+          },
+        );
 
-      const stream = Readable.from(file.buffer);
-      stream.pipe(uploadStream);
-    });
+        const stream = Readable.from(file.buffer);
+        stream.pipe(uploadStream);
+      });
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      if (msg.includes('Invalid cloud_name') || err?.http_code === 401) {
+        throw new BadRequestException(
+          'Invalid Cloudinary configuration. Check CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env. Use the exact values from your Cloudinary Dashboard.',
+        );
+      }
+      throw new BadRequestException(
+        err?.message ? `Image upload failed: ${err.message}` : 'Image upload failed',
+      );
+    }
   }
 
   /**

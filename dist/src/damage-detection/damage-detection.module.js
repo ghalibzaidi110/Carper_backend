@@ -11,12 +11,13 @@ const common_1 = require("@nestjs/common");
 const axios_1 = require("@nestjs/axios");
 const damage_detection_service_1 = require("./damage-detection.service");
 const damage_detection_controller_1 = require("./damage-detection.controller");
+const cloudinary_module_1 = require("../cloudinary/cloudinary.module");
 let DamageDetectionModule = class DamageDetectionModule {
 };
 exports.DamageDetectionModule = DamageDetectionModule;
 exports.DamageDetectionModule = DamageDetectionModule = __decorate([
     (0, common_1.Module)({
-        imports: [axios_1.HttpModule],
+        imports: [axios_1.HttpModule, cloudinary_module_1.CloudinaryModule],
         controllers: [damage_detection_controller_1.DamageDetectionController],
         providers: [damage_detection_service_1.DamageDetectionService],
         exports: [damage_detection_service_1.DamageDetectionService],

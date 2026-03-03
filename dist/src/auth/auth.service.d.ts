@@ -2,6 +2,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto, LoginDto } from './dto';
+import { AccountType } from '@prisma/client';
 export declare class AuthService {
     private prisma;
     private jwtService;
@@ -31,8 +32,36 @@ export declare class AuthService {
         fullName: string;
         avatarUrl?: string;
     }): Promise<{
+        isNewUser: boolean;
+        googleData: {
+            googleId: string;
+            email: string;
+            fullName: string;
+            avatarUrl: string | undefined;
+        };
+    } | {
         accessToken: string;
         refreshToken: string;
+        isNewUser: boolean;
+        user: any;
+        googleData?: undefined;
+    }>;
+    completeGoogleSignup(googleData: {
+        googleId: string;
+        email: string;
+        fullName: string;
+        avatarUrl?: string;
+    }, dto: {
+        phoneNumber: string;
+        city: string;
+        address: string;
+        accountType: AccountType;
+        businessName?: string;
+        businessLicense?: string;
+    }): Promise<{
+        accessToken: string;
+        refreshToken: string;
+        message: string;
         user: any;
     }>;
     facebookLogin(facebookUser: {

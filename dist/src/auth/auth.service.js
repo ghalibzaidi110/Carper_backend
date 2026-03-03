@@ -154,6 +154,7 @@ let AuthService = class AuthService {
         let user = await this.prisma.user.findUnique({
             where: { googleId: googleUser.googleId },
         });
+        let isNewUser = false;
         if (!user) {
             user = await this.prisma.user.findUnique({
                 where: { email: googleUser.email },
@@ -168,15 +169,16 @@ let AuthService = class AuthService {
                 });
             }
             else {
-                user = await this.prisma.user.create({
-                    data: {
-                        email: googleUser.email,
+                isNewUser = true;
+                return {
+                    isNewUser: true,
+                    googleData: {
                         googleId: googleUser.googleId,
+                        email: googleUser.email,
                         fullName: googleUser.fullName,
                         avatarUrl: googleUser.avatarUrl,
-                        accountType: client_1.AccountType.INDIVIDUAL,
                     },
-                });
+                };
             }
         }
         if (user.accountStatus !== 'ACTIVE') {
@@ -189,6 +191,54 @@ let AuthService = class AuthService {
         const tokens = await this.generateTokens(user.id, user.email, user.accountType);
         await this.updateRefreshToken(user.id, tokens.refreshToken);
         return {
+            isNewUser: false,
+            user: this.sanitizeUser(user),
+            ...tokens,
+        };
+    }
+    async completeGoogleSignup(googleData, dto) {
+        let user = await this.prisma.user.findUnique({
+            where: { googleId: googleData.googleId },
+        });
+        if (user) {
+            throw new common_1.ConflictException('User already exists. Please login instead.');
+        }
+        const existingEmail = await this.prisma.user.findUnique({
+            where: { email: googleData.email },
+        });
+        if (existingEmail) {
+            throw new common_1.ConflictException('Email address is already registered');
+        }
+        const existingPhone = await this.prisma.user.findFirst({
+            where: { phoneNumber: dto.phoneNumber },
+        });
+        if (existingPhone) {
+            throw new common_1.ConflictException('Phone number is already registered');
+        }
+        if (dto.accountType === client_1.AccountType.CAR_RENTAL) {
+            if (!dto.businessName || dto.businessName.trim().length < 3) {
+                throw new common_1.BadRequestException('Business name is required and must be at least 3 characters for CAR_RENTAL accounts');
+            }
+        }
+        user = await this.prisma.user.create({
+            data: {
+                email: googleData.email,
+                googleId: googleData.googleId,
+                fullName: googleData.fullName,
+                avatarUrl: googleData.avatarUrl,
+                phoneNumber: dto.phoneNumber,
+                city: dto.city,
+                address: dto.address,
+                country: 'Pakistan',
+                accountType: dto.accountType,
+                businessName: dto.businessName,
+                businessLicense: dto.businessLicense,
+            },
+        });
+        const tokens = await this.generateTokens(user.id, user.email, user.accountType);
+        await this.updateRefreshToken(user.id, tokens.refreshToken);
+        return {
+            message: 'Registration successful',
             user: this.sanitizeUser(user),
             ...tokens,
         };

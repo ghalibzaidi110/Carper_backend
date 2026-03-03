@@ -4,26 +4,26 @@ export declare class NotificationsService {
     private prisma;
     constructor(prisma: PrismaService);
     create(userId: string, dto: CreateNotificationDto): Promise<{
-        id: string;
         title: string;
         message: string;
         type: import("@prisma/client").$Enums.NotificationType;
-        isRead: boolean;
         actionUrl: string | null;
         metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        id: string;
+        isRead: boolean;
         createdAt: Date;
         userId: string;
     }>;
     createForMany(userIds: string[], dto: CreateNotificationDto): Promise<import("@prisma/client").Prisma.BatchPayload>;
     findAll(userId: string, filters: NotificationFilterDto): Promise<{
         data: {
-            id: string;
             title: string;
             message: string;
             type: import("@prisma/client").$Enums.NotificationType;
-            isRead: boolean;
             actionUrl: string | null;
             metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            id: string;
+            isRead: boolean;
             createdAt: Date;
             userId: string;
         }[];
@@ -36,13 +36,13 @@ export declare class NotificationsService {
         };
     }>;
     markAsRead(id: string, userId: string): Promise<{
-        id: string;
         title: string;
         message: string;
         type: import("@prisma/client").$Enums.NotificationType;
-        isRead: boolean;
         actionUrl: string | null;
         metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        id: string;
+        isRead: boolean;
         createdAt: Date;
         userId: string;
     }>;

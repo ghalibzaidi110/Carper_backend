@@ -18,3 +18,15 @@ export declare class LoginDto {
 export declare class RefreshTokenDto {
     refreshToken: string;
 }
+export declare class CompleteGoogleSignupDto {
+    googleId: string;
+    email: string;
+    fullName: string;
+    avatarUrl?: string;
+    phoneNumber: string;
+    city: string;
+    address: string;
+    accountType: AccountType;
+    businessName?: string;
+    businessLicense?: string;
+}

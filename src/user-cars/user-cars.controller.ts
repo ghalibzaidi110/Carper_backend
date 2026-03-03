@@ -6,11 +6,23 @@ import {
   Delete,
   Body,
   Param,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { UserCarsService } from './user-cars.service';
 import { RegisterCarDto, UpdateCarDto } from './dto';
-import { CurrentUser } from '../common/decorators';
+import { CurrentUser, Roles } from '../common/decorators';
+import { AccountType } from '@prisma/client';
 
 @ApiTags('User Cars')
 @ApiBearerAuth()
@@ -66,5 +78,50 @@ export class UserCarsController {
   async checkRegistrationImages(@Param('id') carId: string) {
     const hasImages = await this.userCarsService.hasRegistrationImages(carId);
     return { hasRegistrationImages: hasImages };
+  }
+
+  @Post('bulk-import')
+  @Roles(AccountType.CAR_RENTAL)
+  @ApiOperation({
+    summary: 'Bulk import cars from CSV (Rental Business only)',
+    description:
+      'Upload a CSV file to import multiple cars. CSV format: registrationNumber,manufacturer,modelName,year,variant,color,mileage,condition,purchasePrice,vinNumber,purchaseDate',
+  })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'CSV file with car data',
+        },
+        validateOnly: {
+          type: 'boolean',
+          description: 'If true, only validates without importing',
+          default: false,
+        },
+      },
+    },
+  })
+  async bulkImport(
+    @CurrentUser('id') userId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Query('validateOnly') validateOnly?: string,
+  ) {
+    if (!file) {
+      throw new Error('CSV file is required');
+    }
+
+    if (!file.mimetype.includes('csv') && !file.originalname.endsWith('.csv')) {
+      throw new Error('File must be a CSV file');
+    }
+
+    const csvData = file.buffer.toString('utf-8');
+    const shouldValidateOnly = validateOnly === 'true';
+
+    return this.userCarsService.bulkImportCars(userId, csvData, shouldValidateOnly);
   }
 }

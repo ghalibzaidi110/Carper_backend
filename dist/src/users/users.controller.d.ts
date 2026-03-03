@@ -7,7 +7,6 @@ export declare class UsersController {
     constructor(usersService: UsersService, cloudinaryService: CloudinaryService);
     getProfile(userId: string): Promise<{
         id: string;
-        createdAt: Date;
         email: string;
         accountType: import("@prisma/client").$Enums.AccountType;
         accountStatus: import("@prisma/client").$Enums.AccountStatus;
@@ -22,6 +21,7 @@ export declare class UsersController {
         cnicImageUrl: string | null;
         isVerified: boolean;
         avatarUrl: string | null;
+        createdAt: Date;
         lastLogin: Date | null;
     }>;
     updateProfile(userId: string, dto: UpdateProfileDto): Promise<{

@@ -15,18 +15,122 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../prisma/prisma.service");
 const axios_1 = require("@nestjs/axios");
+const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
 const rxjs_1 = require("rxjs");
 let DamageDetectionService = DamageDetectionService_1 = class DamageDetectionService {
     prisma;
     configService;
     httpService;
+    cloudinaryService;
     logger = new common_1.Logger(DamageDetectionService_1.name);
     serviceUrl;
-    constructor(prisma, configService, httpService) {
+    constructor(prisma, configService, httpService, cloudinaryService) {
         this.prisma = prisma;
         this.configService = configService;
         this.httpService = httpService;
+        this.cloudinaryService = cloudinaryService;
         this.serviceUrl = this.configService.get('DAMAGE_DETECTION_SERVICE_URL', 'http://localhost:8000');
+    }
+    async scanByUpload(files) {
+        if (!files?.length) {
+            throw new common_1.BadRequestException('At least one image is required');
+        }
+        const usePython = await this.isPythonServiceAvailable();
+        const results = [];
+        const placeholderUrl = 'https://via.placeholder.com/800x600?text=Image+upload+skipped+(configure+Cloudinary+for+real+upload)';
+        for (const file of files) {
+            if (!file.buffer?.length)
+                continue;
+            let originalUrl;
+            try {
+                const uploaded = await this.cloudinaryService.uploadImage(file, 'damage-scan', 10);
+                originalUrl = uploaded.secure_url;
+            }
+            catch (err) {
+                this.logger.warn(`Cloudinary upload failed (${err?.message ?? err}), returning placeholder. Configure CLOUDINARY_* in .env for real uploads.`);
+                originalUrl = placeholderUrl;
+            }
+            let processedUrl;
+            let hasDamage;
+            let confidence;
+            let detections;
+            if (usePython) {
+                try {
+                    const pythonResult = await this.callYoloService(originalUrl);
+                    processedUrl = pythonResult.processedImageUrl ?? originalUrl;
+                    hasDamage = pythonResult.hasDamage;
+                    confidence = pythonResult.confidence;
+                    detections = pythonResult.detections ?? [];
+                }
+                catch (e) {
+                    this.logger.warn(`Python service failed for one image, using demo response: ${e?.message}`);
+                    processedUrl = this.buildProcessedImageUrl(originalUrl);
+                    const dummy = this.getDummyDetectionResult();
+                    hasDamage = dummy.hasDamage;
+                    confidence = dummy.confidence;
+                    detections = dummy.detections;
+                }
+            }
+            else {
+                processedUrl =
+                    originalUrl === placeholderUrl
+                        ? placeholderUrl
+                        : this.buildProcessedImageUrl(originalUrl);
+                const dummy = this.getDummyDetectionResult();
+                hasDamage = dummy.hasDamage;
+                confidence = dummy.confidence;
+                detections = dummy.detections;
+            }
+            const severity = this.getSeverity(hasDamage, confidence);
+            results.push({
+                originalImageUrl: originalUrl,
+                processedImageUrl: processedUrl,
+                hasDamage,
+                confidence,
+                detections,
+                severity,
+            });
+        }
+        const imagesWithDamage = results.filter((r) => r.hasDamage).length;
+        return {
+            summary: {
+                totalImages: results.length,
+                imagesWithDamage,
+                isDemoMode: !usePython,
+            },
+            results,
+        };
+    }
+    buildProcessedImageUrl(originalUrl) {
+        if (!originalUrl.includes('/upload/'))
+            return originalUrl;
+        const transformation = 'bo_3px_solid_red';
+        return originalUrl.replace('/upload/', `/upload/${transformation}/`);
+    }
+    getDummyDetectionResult() {
+        return {
+            hasDamage: false,
+            confidence: 0,
+            detections: [],
+        };
+    }
+    getSeverity(hasDamage, confidence) {
+        if (!hasDamage)
+            return 'NONE';
+        if (confidence >= 0.8)
+            return 'SEVERE';
+        if (confidence >= 0.5)
+            return 'MODERATE';
+        return 'MINOR';
+    }
+    async isPythonServiceAvailable() {
+        try {
+            await (0, rxjs_1.firstValueFrom)(this.httpService.get(`${this.serviceUrl}/health`, { timeout: 2000 }));
+            return true;
+        }
+        catch {
+            return false;
+        }
     }
     async detectOnImage(imageId, userId) {
         const image = await this.prisma.carImage.findUnique({
@@ -174,6 +278,7 @@ exports.DamageDetectionService = DamageDetectionService = DamageDetectionService
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         config_1.ConfigService,
-        axios_1.HttpService])
+        axios_1.HttpService,
+        cloudinary_service_1.CloudinaryService])
 ], DamageDetectionService);
 //# sourceMappingURL=damage-detection.service.js.map

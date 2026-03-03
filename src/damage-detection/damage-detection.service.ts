@@ -8,6 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { HttpService } from '@nestjs/axios';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { firstValueFrom } from 'rxjs';
 
 export interface DamageDetectionResult {
@@ -21,6 +22,28 @@ export interface DamageDetectionResult {
   processedImageUrl?: string;
 }
 
+export interface ScanByUploadResultItem {
+  originalImageUrl: string;
+  processedImageUrl: string;
+  hasDamage: boolean;
+  confidence: number;
+  detections: Array<{
+    label: string;
+    confidence: number;
+    bbox: [number, number, number, number];
+  }>;
+  severity?: 'NONE' | 'MINOR' | 'MODERATE' | 'SEVERE';
+}
+
+export interface ScanByUploadResponse {
+  summary: {
+    totalImages: number;
+    imagesWithDamage: number;
+    isDemoMode: boolean;
+  };
+  results: ScanByUploadResultItem[];
+}
+
 @Injectable()
 export class DamageDetectionService {
   private readonly logger = new Logger(DamageDetectionService.name);
@@ -30,11 +53,134 @@ export class DamageDetectionService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private httpService: HttpService,
+    private cloudinaryService: CloudinaryService,
   ) {
     this.serviceUrl = this.configService.get<string>(
       'DAMAGE_DETECTION_SERVICE_URL',
       'http://localhost:8000',
     );
+  }
+
+  /**
+   * Accept image(s) via upload, optionally call Python API; when Python is unavailable
+   * upload to Cloudinary, apply a visual transformation to differentiate "processed"
+   * image from original, and return dummy damage data.
+   */
+  async scanByUpload(files: Express.Multer.File[]): Promise<ScanByUploadResponse> {
+    if (!files?.length) {
+      throw new BadRequestException('At least one image is required');
+    }
+
+    const usePython = await this.isPythonServiceAvailable();
+    const results: ScanByUploadResultItem[] = [];
+
+    const placeholderUrl = 'https://via.placeholder.com/800x600?text=Image+upload+skipped+(configure+Cloudinary+for+real+upload)';
+
+    for (const file of files) {
+      if (!file.buffer?.length) continue;
+
+      let originalUrl: string;
+      try {
+        const uploaded = await this.cloudinaryService.uploadImage(
+          file,
+          'damage-scan',
+          10,
+        );
+        originalUrl = uploaded.secure_url;
+      } catch (err: any) {
+        this.logger.warn(
+          `Cloudinary upload failed (${err?.message ?? err}), returning placeholder. Configure CLOUDINARY_* in .env for real uploads.`,
+        );
+        originalUrl = placeholderUrl;
+      }
+
+      let processedUrl: string;
+      let hasDamage: boolean;
+      let confidence: number;
+      let detections: Array<{ label: string; confidence: number; bbox: [number, number, number, number] }>;
+
+      if (usePython) {
+        try {
+          const pythonResult = await this.callYoloService(originalUrl);
+          processedUrl = pythonResult.processedImageUrl ?? originalUrl;
+          hasDamage = pythonResult.hasDamage;
+          confidence = pythonResult.confidence;
+          detections = pythonResult.detections ?? [];
+        } catch (e) {
+          this.logger.warn(`Python service failed for one image, using demo response: ${e?.message}`);
+          processedUrl = this.buildProcessedImageUrl(originalUrl);
+          const dummy = this.getDummyDetectionResult();
+          hasDamage = dummy.hasDamage;
+          confidence = dummy.confidence;
+          detections = dummy.detections;
+        }
+      } else {
+        processedUrl =
+          originalUrl === placeholderUrl
+            ? placeholderUrl
+            : this.buildProcessedImageUrl(originalUrl);
+        const dummy = this.getDummyDetectionResult();
+        hasDamage = dummy.hasDamage;
+        confidence = dummy.confidence;
+        detections = dummy.detections;
+      }
+
+      const severity = this.getSeverity(hasDamage, confidence);
+      results.push({
+        originalImageUrl: originalUrl,
+        processedImageUrl: processedUrl,
+        hasDamage,
+        confidence,
+        detections,
+        severity,
+      });
+    }
+
+    const imagesWithDamage = results.filter((r) => r.hasDamage).length;
+    return {
+      summary: {
+        totalImages: results.length,
+        imagesWithDamage,
+        isDemoMode: !usePython,
+      },
+      results,
+    };
+  }
+
+  private buildProcessedImageUrl(originalUrl: string): string {
+    if (!originalUrl.includes('/upload/')) return originalUrl;
+    const transformation = 'bo_3px_solid_red';
+    return originalUrl.replace('/upload/', `/upload/${transformation}/`);
+  }
+
+  private getDummyDetectionResult(): {
+    hasDamage: boolean;
+    confidence: number;
+    detections: Array<{ label: string; confidence: number; bbox: [number, number, number, number] }>;
+  } {
+    return {
+      hasDamage: false,
+      confidence: 0,
+      detections: [],
+    };
+  }
+
+  private getSeverity(hasDamage: boolean, confidence: number): 'NONE' | 'MINOR' | 'MODERATE' | 'SEVERE' {
+    if (!hasDamage) return 'NONE';
+    if (confidence >= 0.8) return 'SEVERE';
+    if (confidence >= 0.5) return 'MODERATE';
+    return 'MINOR';
+  }
+
+  private async isPythonServiceAvailable(): Promise<boolean> {
+    try {
+      await firstValueFrom(
+        this.httpService.get(`${this.serviceUrl}/health`, { timeout: 2000 }),
+      );
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

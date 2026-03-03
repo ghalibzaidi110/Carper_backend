@@ -3,6 +3,10 @@ import { RunDetectionDto, RunDetectionOnCarDto } from './dto';
 export declare class DamageDetectionController {
     private detectionService;
     constructor(detectionService: DamageDetectionService);
+    scanByUpload(files: {
+        images?: Express.Multer.File[];
+        image?: Express.Multer.File[];
+    }): Promise<import("./damage-detection.service").ScanByUploadResponse>;
     detectOnImage(dto: RunDetectionDto, userId: string): Promise<import("./damage-detection.service").DamageDetectionResult>;
     detectOnCar(dto: RunDetectionOnCarDto, userId: string): Promise<{
         carId: string;
@@ -36,14 +40,14 @@ export declare class DamageDetectionController {
         totalDamageRecords: number;
         records: {
             id: string;
-            hasDamageDetected: boolean;
-            imageUrl: string;
-            uploadedAt: Date;
-            isCurrent: boolean;
-            version: number;
             imageCategory: import("@prisma/client").$Enums.ImageCategory;
+            imageUrl: string;
             thumbnailUrl: string | null;
+            version: number;
+            isCurrent: boolean;
+            hasDamageDetected: boolean;
             damageDetectionData: import("@prisma/client/runtime/client").JsonValue;
+            uploadedAt: Date;
         }[];
     }>;
 }
