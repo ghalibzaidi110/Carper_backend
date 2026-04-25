@@ -16,6 +16,10 @@ __pycache__/
 *.joblib
 models/
 
+# Exception: keep production weights so Render can load them on deploy
+!weights/best.pt
+!weights/cost_estimation.joblib
+
 # Local test harness (input images, output annotations, ad-hoc scripts)
 test/
 
