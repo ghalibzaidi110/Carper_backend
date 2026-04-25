@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.model_path:
-        logger.info("Loading model from %s", settings.model_path)
+        logger.info("Loading YOLO model from %s", settings.model_path)
         try:
             from app.engine import _load_model
             await asyncio.to_thread(_load_model)
@@ -34,6 +34,18 @@ async def lifespan(app: FastAPI):
             raise
     else:
         logger.info("No MODEL_PATH set; using stub detection")
+
+    if settings.cost_model_path:
+        logger.info("Loading cost model from %s", settings.cost_model_path)
+        try:
+            from app.cost import _load_cost_model
+            await asyncio.to_thread(_load_cost_model)
+        except Exception as e:
+            logger.error("Failed to load cost model: %s", e)
+            # Don't raise — cost endpoint will surface the error if hit
+    else:
+        logger.info("No COST_MODEL_PATH set; /cost-estimate will fail until configured")
+
     yield
     # shutdown: cleanup if needed
     pass
@@ -75,6 +87,41 @@ class DetectResponse(BaseModel):
     confidence: float
     detections: list[DetectionItem]
     processed_image_url: str | None = None
+
+
+class CostEstimateRequest(BaseModel):
+    className: str = "dent"
+    panelLocation: str | None = None
+    confidence: float = 0.5
+    bbox: list[float] = [0, 0, 100, 100]   # [x, y, w, h] in pixels
+    frameArea: float | None = None
+    vehicleMake: str = "Toyota"
+    vehicleModel: str = "Corolla"
+    vehicleYear: int = 2020
+    areaCm2: float | None = None
+    perimCm: float | None = None
+    severity: str | None = None
+
+
+class CostEstimateBreakdown(BaseModel):
+    repairMethod: str
+    laborHours: float
+    paintCost: float
+    areaCm2: float
+    perimeterCm: float
+    material: str
+    severityScore: str
+
+
+class CostEstimateResponse(BaseModel):
+    cost: int
+    costLow: int
+    costHigh: int
+    currency: str
+    severity: str
+    decision: str
+    unknownFeatures: list[str]
+    breakdown: CostEstimateBreakdown
 
 
 @app.get("/health")
@@ -137,6 +184,34 @@ async def detect_upload(file: UploadFile = File(...)):
     except Exception as e:
         logger.exception("Upload-based detection failed")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/cost-estimate", response_model=CostEstimateResponse)
+async def cost_estimate(body: CostEstimateRequest):
+    """
+    Predict repair cost in PKR for a single damage entry. Used by the
+    Carper live-detection page (proxied through NestJS).
+    """
+    try:
+        from app.cost import predict_cost
+        result = await asyncio.to_thread(predict_cost, body.dict())
+        return CostEstimateResponse(**result)
+    except FileNotFoundError as e:
+        logger.warning("Cost model missing: %s", e)
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        logger.exception("Cost estimation failed")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get("/cost/health")
+async def cost_health():
+    from app import cost as cost_module
+    return {
+        "status": "ok",
+        "model_loaded": cost_module._model is not None,
+        "configured_path": settings.cost_model_path,
+    }
 
 
 if __name__ == "__main__":

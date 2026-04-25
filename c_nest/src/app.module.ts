@@ -22,6 +22,7 @@ import { CarImagesModule } from './car-images/car-images.module';
 import { CarListingsModule } from './car-listings/car-listings.module';
 import { RentalsModule } from './rentals/rentals.module';
 import { DamageDetectionModule } from './damage-detection/damage-detection.module';
+import { LiveDetectionModule } from './live-detection/live-detection.module';
 import { AdminModule } from './admin/admin.module';
 import { PdfModule } from './pdf/pdf.module';
 
@@ -54,6 +55,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     CarListingsModule,
     RentalsModule,
     DamageDetectionModule,
+    LiveDetectionModule,
     AdminModule,
     PdfModule,
   ],
