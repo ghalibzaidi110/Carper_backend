@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     port: int = 8000
     host: str = "0.0.0.0"
     model_path: str | None = None
+    cost_model_path: str | None = None
     log_level: str = "info"
     # YOLO inference (match yolov8n_balanced training)
     conf_threshold: float = 0.25

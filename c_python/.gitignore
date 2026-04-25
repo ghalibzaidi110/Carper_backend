@@ -13,6 +13,7 @@ __pycache__/
 
 # Model weights and trained models (large binaries)
 *.pt
+*.joblib
 models/
 
 # Local test harness (input images, output annotations, ad-hoc scripts)
