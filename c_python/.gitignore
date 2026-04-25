@@ -1,7 +1,27 @@
 .venv/
 venv/
+env/
 __pycache__/
 *.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 .env
+.env.local
+
+# Model weights and trained models (large binaries)
 *.pt
 models/
+
+# Local test harness (input images, output annotations, ad-hoc scripts)
+test/
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+*.log
