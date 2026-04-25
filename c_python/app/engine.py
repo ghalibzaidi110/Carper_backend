@@ -116,26 +116,30 @@ def _run_inference(image_bytes: bytes) -> tuple[list[dict[str, Any]], bytes | No
     return out, annotated_bytes
 
 
-async def run_yolo_detection(image_url: str) -> dict[str, Any]:
-    """
-    Download image from URL, run YOLO inference, return API-shaped result:
-    has_damage, confidence, detections, processed_image_url.
-    processed_image_url is a data URL of the annotated image (boxes drawn), or the original URL if annotation failed.
-    """
-    image_bytes = await _download_image(image_url)
-    detections, annotated_bytes = await asyncio.to_thread(_run_inference, image_bytes)
-
+def _build_response(image_bytes_for_inference: bytes, fallback_processed_url: str | None) -> dict[str, Any]:
+    """Run inference on raw bytes and assemble the API-shaped response."""
+    detections, annotated_bytes = _run_inference(image_bytes_for_inference)
     has_damage = len(detections) > 0
     confidence = max((d["confidence"] for d in detections), default=0.0)
-
-    processed_image_url = image_url
+    processed_image_url = fallback_processed_url
     if annotated_bytes:
         b64 = base64.b64encode(annotated_bytes).decode("ascii")
         processed_image_url = f"data:image/jpeg;base64,{b64}"
-
     return {
         "has_damage": has_damage,
         "confidence": round(confidence, 4),
         "detections": detections,
         "processed_image_url": processed_image_url,
     }
+
+
+async def run_yolo_detection(image_url: str) -> dict[str, Any]:
+    """Download image from URL, run YOLO inference, return API-shaped result."""
+    image_bytes = await _download_image(image_url)
+    return await asyncio.to_thread(_build_response, image_bytes, image_url)
+
+
+async def run_yolo_on_bytes(image_bytes: bytes) -> dict[str, Any]:
+    """Run YOLO inference directly on bytes (no URL download). Annotated image
+    is returned as a base64 data URL; processed_image_url is None on failure."""
+    return await asyncio.to_thread(_build_response, image_bytes, None)

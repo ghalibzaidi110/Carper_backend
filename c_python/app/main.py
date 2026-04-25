@@ -7,12 +7,13 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl
 
 from app.config import settings
 from app.detection import run_detection
+from app.engine import run_yolo_on_bytes
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -101,6 +102,40 @@ async def detect(body: DetectRequest):
         )
     except Exception as e:
         logger.exception("Detection failed for %s", url)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/detect-upload", response_model=DetectResponse)
+async def detect_upload(file: UploadFile = File(...)):
+    """
+    Run YOLO inference directly on uploaded image bytes — no URL download.
+    Useful when the caller doesn't have the image hosted (e.g. Cloudinary
+    not configured during local development).
+    """
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    try:
+        image_bytes = await file.read()
+        if not image_bytes:
+            raise HTTPException(status_code=400, detail="Empty file")
+        result = await run_yolo_on_bytes(image_bytes)
+        return DetectResponse(
+            has_damage=result["has_damage"],
+            confidence=result["confidence"],
+            detections=[
+                DetectionItem(
+                    label=d["label"],
+                    confidence=d["confidence"],
+                    bbox=d["bbox"],
+                )
+                for d in result["detections"]
+            ],
+            processed_image_url=result.get("processed_image_url"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Upload-based detection failed")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

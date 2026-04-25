@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { HttpService } from '@nestjs/axios';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { firstValueFrom } from 'rxjs';
+import FormData from 'form-data';
 
 export interface DamageDetectionResult {
   hasDamage: boolean;
@@ -73,13 +74,15 @@ export class DamageDetectionService {
 
     const usePython = await this.isPythonServiceAvailable();
     const results: ScanByUploadResultItem[] = [];
-
-    const placeholderUrl = 'https://via.placeholder.com/800x600?text=Image+upload+skipped+(configure+Cloudinary+for+real+upload)';
+    let realDetectionCount = 0;
 
     for (const file of files) {
       if (!file.buffer?.length) continue;
 
+      // Try Cloudinary upload; if it fails, fall back to a data: URL of the
+      // original bytes so the frontend can still display the original image.
       let originalUrl: string;
+      let cloudinaryWorked = true;
       try {
         const uploaded = await this.cloudinaryService.uploadImage(
           file,
@@ -89,9 +92,10 @@ export class DamageDetectionService {
         originalUrl = uploaded.secure_url;
       } catch (err: any) {
         this.logger.warn(
-          `Cloudinary upload failed (${err?.message ?? err}), returning placeholder. Configure CLOUDINARY_* in .env for real uploads.`,
+          `Cloudinary upload failed (${err?.message ?? err}). Falling back to direct file upload to Python.`,
         );
-        originalUrl = placeholderUrl;
+        cloudinaryWorked = false;
+        originalUrl = this.bytesToDataUrl(file.buffer, file.mimetype);
       }
 
       let processedUrl: string;
@@ -101,11 +105,34 @@ export class DamageDetectionService {
 
       if (usePython) {
         try {
-          const pythonResult = await this.callYoloService(originalUrl);
+          const pythonResult = cloudinaryWorked
+            ? await this.callYoloService(originalUrl)
+            : await this.callYoloUpload(file);
           processedUrl = pythonResult.processedImageUrl ?? originalUrl;
           hasDamage = pythonResult.hasDamage;
           confidence = pythonResult.confidence;
           detections = pythonResult.detections ?? [];
+          realDetectionCount += 1;
+
+          // Annotated image arrives as a base64 data: URL. If Cloudinary is
+          // available, persist it there and replace the data: URL with a CDN URL.
+          if (cloudinaryWorked && processedUrl.startsWith('data:image/')) {
+            try {
+              const annotatedUrl = await this.uploadAnnotatedToCloudinary(
+                processedUrl,
+                file.originalname || 'scan',
+              );
+              if (annotatedUrl) processedUrl = annotatedUrl;
+            } catch (uploadErr: any) {
+              this.logger.warn(
+                `Failed to upload annotated image to Cloudinary: ${uploadErr?.message}. Returning data URL as fallback.`,
+              );
+            }
+          }
+
+          this.logger.log(
+            `Detection succeeded via ${cloudinaryWorked ? 'URL' : 'direct upload'}: ${detections.length} detection(s), max confidence ${confidence}`,
+          );
         } catch (e) {
           this.logger.warn(`Python service failed for one image, using demo response: ${e?.message}`);
           processedUrl = this.buildProcessedImageUrl(originalUrl);
@@ -115,10 +142,7 @@ export class DamageDetectionService {
           detections = dummy.detections;
         }
       } else {
-        processedUrl =
-          originalUrl === placeholderUrl
-            ? placeholderUrl
-            : this.buildProcessedImageUrl(originalUrl);
+        processedUrl = this.buildProcessedImageUrl(originalUrl);
         const dummy = this.getDummyDetectionResult();
         hasDamage = dummy.hasDamage;
         confidence = dummy.confidence;
@@ -136,12 +160,14 @@ export class DamageDetectionService {
       });
     }
 
+    // Demo mode is true when Python is down OR when every per-image call fell back
+    const isDemoMode = !usePython || (results.length > 0 && realDetectionCount === 0);
     const imagesWithDamage = results.filter((r) => r.hasDamage).length;
     return {
       summary: {
         totalImages: results.length,
         imagesWithDamage,
-        isDemoMode: !usePython,
+        isDemoMode,
       },
       results,
     };
@@ -151,6 +177,73 @@ export class DamageDetectionService {
     if (!originalUrl.includes('/upload/')) return originalUrl;
     const transformation = 'bo_3px_solid_red';
     return originalUrl.replace('/upload/', `/upload/${transformation}/`);
+  }
+
+  private bytesToDataUrl(buffer: Buffer, mimetype?: string): string {
+    const mime = mimetype || 'image/jpeg';
+    return `data:${mime};base64,${buffer.toString('base64')}`;
+  }
+
+  /**
+   * Decode a `data:image/...;base64,...` URL (Python annotated frame) and
+   * upload the resulting bytes to Cloudinary. Returns the secure URL or null
+   * if the input wasn't a parseable data URL.
+   */
+  private async uploadAnnotatedToCloudinary(
+    dataUrl: string,
+    originalFilename: string,
+  ): Promise<string | null> {
+    const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl);
+    if (!match) return null;
+    const ext = match[1].split('/')[1].replace('+xml', '');
+    const buffer = Buffer.from(match[2], 'base64');
+    const stem = (originalFilename || 'scan').replace(/\.[^/.]+$/, '');
+    const filename = `annotated-${stem}-${Date.now()}.${ext === 'jpeg' ? 'jpg' : ext}`;
+    const result = await this.cloudinaryService.uploadBuffer(
+      buffer,
+      'damage-scan-annotated',
+      filename,
+    );
+    return result.secure_url;
+  }
+
+  /**
+   * Send raw image bytes directly to the Python /detect-upload endpoint
+   * (multipart). Use when the image isn't already hosted at a URL — e.g.
+   * Cloudinary isn't configured or upload failed.
+   */
+  private async callYoloUpload(file: Express.Multer.File): Promise<DamageDetectionResult> {
+    try {
+      const form = new FormData();
+      form.append('file', file.buffer, {
+        filename: file.originalname || 'upload.jpg',
+        contentType: file.mimetype || 'image/jpeg',
+      });
+      const response = await firstValueFrom(
+        this.httpService.post(`${this.serviceUrl}/detect-upload`, form, {
+          headers: form.getHeaders(),
+          timeout: 30000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        }),
+      );
+      const data = response.data;
+      return {
+        hasDamage: data.has_damage ?? false,
+        confidence: data.confidence ?? 0,
+        detections: (data.detections || []).map((d: any) => ({
+          label: d.label,
+          confidence: d.confidence,
+          bbox: d.bbox,
+        })),
+        processedImageUrl: data.processed_image_url,
+      };
+    } catch (error: any) {
+      this.logger.error(`YOLOv8 upload-mode error: ${error?.message ?? error}`);
+      throw new InternalServerErrorException(
+        'Damage detection service is unavailable. Please try again later.',
+      );
+    }
   }
 
   private getDummyDetectionResult(): {

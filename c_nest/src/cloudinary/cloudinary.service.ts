@@ -1,16 +1,29 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { Readable } from 'stream';
 
 @Injectable()
 export class CloudinaryService {
+  private readonly logger = new Logger(CloudinaryService.name);
+
   constructor(private configService: ConfigService) {
+    const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+    const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+    const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
+
     cloudinary.config({
-      cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
-      api_key: this.configService.get<string>('CLOUDINARY_API_KEY'),
-      api_secret: this.configService.get<string>('CLOUDINARY_API_SECRET'),
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
     });
+
+    // Log the loaded config (masking sensitive values) so misconfigurations are visible at startup
+    const mask = (v?: string) =>
+      !v ? 'MISSING' : `${v.slice(0, 3)}***${v.slice(-2)} (${v.length} chars)`;
+    this.logger.log(
+      `Cloudinary config -> cloud_name: ${cloudName ?? 'MISSING'}, api_key: ${mask(apiKey)}, api_secret: ${mask(apiSecret)}`,
+    );
   }
 
   /**
@@ -65,6 +78,10 @@ export class CloudinaryService {
         stream.pipe(uploadStream);
       });
     } catch (err: any) {
+      // Log the FULL Cloudinary error so configuration issues are easy to diagnose
+      this.logger.error(
+        `Cloudinary upload error -> http_code=${err?.http_code} message="${err?.message}" name=${err?.name}`,
+      );
       const msg = err?.message || String(err);
       if (msg.includes('Invalid cloud_name') || err?.http_code === 401) {
         throw new BadRequestException(
@@ -86,6 +103,43 @@ export class CloudinaryService {
   ): Promise<UploadApiResponse[]> {
     const uploads = files.map((file) => this.uploadImage(file, folder));
     return Promise.all(uploads);
+  }
+
+  /**
+   * Upload raw image bytes (no Multer file). Used for images we generate
+   * server-side (e.g., the YOLO-annotated frame returned by Python).
+   */
+  async uploadBuffer(
+    buffer: Buffer,
+    folder: string,
+    filename = 'image.jpg',
+  ): Promise<UploadApiResponse> {
+    if (!buffer?.length) {
+      throw new BadRequestException('No image data provided');
+    }
+    try {
+      return await new Promise<UploadApiResponse>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: `car-platform/${folder}`,
+            resource_type: 'image',
+            public_id: filename.replace(/\.[^/.]+$/, ''),
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result!);
+          },
+        );
+        Readable.from(buffer).pipe(uploadStream);
+      });
+    } catch (err: any) {
+      this.logger.error(
+        `Cloudinary buffer upload error -> http_code=${err?.http_code} message="${err?.message}"`,
+      );
+      throw new BadRequestException(
+        err?.message ? `Image upload failed: ${err.message}` : 'Image upload failed',
+      );
+    }
   }
 
   /**
