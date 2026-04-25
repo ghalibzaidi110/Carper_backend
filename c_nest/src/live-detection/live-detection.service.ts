@@ -10,7 +10,7 @@ import { firstValueFrom } from 'rxjs';
 import { CostEstimateDto, VendorSearchDto, VehicleDto } from './dto';
 import { PANEL_QUERY_MAP, SEARCH_CONFIG, SearchConfig } from './constants/search-config';
 
-interface Vendor {
+export interface Vendor {
   name: string;
   price: number;
   currency: 'PKR' | 'USD';
@@ -25,15 +25,17 @@ interface Vendor {
   badge: string | null;
 }
 
-interface VendorSearchResult {
+export interface VendorFallback {
+  min: number;
+  max: number;
+  currency: 'PKR';
+  partName: string;
+  note: string;
+}
+
+export interface VendorSearchResult {
   vendors: Vendor[];
-  fallbackEstimate: {
-    min: number;
-    max: number;
-    currency: 'PKR';
-    partName: string;
-    note: string;
-  } | null;
+  fallbackEstimate: VendorFallback | null;
 }
 
 interface CacheEntry {
