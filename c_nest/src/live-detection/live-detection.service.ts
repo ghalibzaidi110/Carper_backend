@@ -241,6 +241,37 @@ export class LiveDetectionService {
     }
   }
 
+  // ─── D) Known vehicles — canonical list from the cost model ────────────
+
+  /**
+   * F-5: Expose Python's `KNOWN_MAKES` / `KNOWN_MODELS` / `KNOWN_PANELS`
+   * to the frontend so it can validate its own hardcoded vehicle list
+   * against the source of truth (the cost model's training vocabulary).
+   */
+  async getKnownVehicles(): Promise<{
+    modelVersion: string | null;
+    makes: string[];
+    models: string[];
+    panels: string[];
+  }> {
+    try {
+      const r = await firstValueFrom(
+        this.httpService.get(`${this.pythonUrl}/cost/known-vehicles`, {
+          timeout: 2000,
+        }),
+      );
+      return {
+        modelVersion: r.data?.model_version ?? null,
+        makes: r.data?.makes ?? [],
+        models: r.data?.models ?? [],
+        panels: r.data?.panels ?? [],
+      };
+    } catch (err: any) {
+      this.logger.warn(`Failed to fetch known-vehicles: ${err?.message ?? err}`);
+      return { modelVersion: null, makes: [], models: [], panels: [] };
+    }
+  }
+
   // ─── C) Health: report Python and SerpApi availability ──────────────────
 
   async getHealth(): Promise<any> {

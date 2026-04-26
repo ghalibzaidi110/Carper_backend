@@ -5,11 +5,21 @@ import {
   ArrayMinSize,
   IsArray,
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from 'class-validator';
+
+// Practical upper bounds. Frames much larger than 8K (7680×4320) come from
+// no real-world camera, so anything beyond is almost certainly garbage.
+const MAX_PIXEL_DIMENSION = 8000;
+const MAX_FRAME_AREA = 8000 * 8000;
+const MIN_VEHICLE_YEAR = 1990;
+const MAX_VEHICLE_YEAR = new Date().getFullYear() + 1;
 
 export class VehicleDto {
   @ApiPropertyOptional({ example: 'Toyota' })
@@ -24,7 +34,9 @@ export class VehicleDto {
 
   @ApiPropertyOptional({ example: 2020 })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
+  @Min(MIN_VEHICLE_YEAR)
+  @Max(MAX_VEHICLE_YEAR)
   year?: number;
 }
 
@@ -71,6 +83,9 @@ export class CostEstimateDto {
   @IsArray()
   @ArrayMinSize(4)
   @ArrayMaxSize(4)
+  @IsNumber({}, { each: true })
+  @Min(0, { each: true })
+  @Max(MAX_PIXEL_DIMENSION, { each: true })
   panelBbox?: number[];
 
   @ApiPropertyOptional({
@@ -81,6 +96,9 @@ export class CostEstimateDto {
   @IsArray()
   @ArrayMinSize(2)
   @ArrayMaxSize(2)
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  @Max(MAX_PIXEL_DIMENSION, { each: true })
   frameSize?: number[];
 
   @ApiPropertyOptional({
@@ -91,8 +109,10 @@ export class CostEstimateDto {
   @IsIn(['sedan', 'hatchback', 'suv', 'pickup', 'minivan'])
   vehicleCategory?: 'sedan' | 'hatchback' | 'suv' | 'pickup' | 'minivan';
 
-  @ApiProperty({ example: 0.7 })
+  @ApiProperty({ example: 0.7, minimum: 0, maximum: 1 })
   @IsNumber()
+  @Min(0)
+  @Max(1)
   confidence!: number;
 
   @ApiProperty({
@@ -102,11 +122,16 @@ export class CostEstimateDto {
   @IsArray()
   @ArrayMinSize(4)
   @ArrayMaxSize(4)
+  @IsNumber({}, { each: true })
+  @Min(0, { each: true })
+  @Max(MAX_PIXEL_DIMENSION, { each: true })
   bbox!: number[];
 
   @ApiPropertyOptional({ example: 921600 })
   @IsOptional()
   @IsNumber()
+  @Min(1)
+  @Max(MAX_FRAME_AREA)
   frameArea?: number;
 
   @ApiPropertyOptional({ example: 'Toyota' })
@@ -119,19 +144,25 @@ export class CostEstimateDto {
   @IsString()
   vehicleModel?: string;
 
-  @ApiPropertyOptional({ example: 2020 })
+  @ApiPropertyOptional({ example: 2020, minimum: MIN_VEHICLE_YEAR, maximum: MAX_VEHICLE_YEAR })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
+  @Min(MIN_VEHICLE_YEAR)
+  @Max(MAX_VEHICLE_YEAR)
   vehicleYear?: number;
 
-  @ApiPropertyOptional({ example: 45.5 })
+  @ApiPropertyOptional({ example: 45.5, minimum: 0 })
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(1_000_000)  // sanity ceiling — no real damage is 100m²
   areaCm2?: number;
 
-  @ApiPropertyOptional({ example: 28.4 })
+  @ApiPropertyOptional({ example: 28.4, minimum: 0 })
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100_000)
   perimCm?: number;
 
   @ApiPropertyOptional({ enum: ['minor', 'moderate', 'significant', 'severe'] })

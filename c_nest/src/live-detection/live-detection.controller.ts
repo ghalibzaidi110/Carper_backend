@@ -59,4 +59,17 @@ export class LiveDetectionController {
   health() {
     return this.service.getHealth();
   }
+
+  @Public()
+  @Get('known-vehicles')
+  // Static catalogue read — no need to throttle.
+  @SkipThrottle()
+  @ApiOperation({
+    summary:
+      'Canonical list of vehicles the cost model recognizes. ' +
+      'Frontend should validate its hardcoded dropdown against this.',
+  })
+  knownVehicles() {
+    return this.service.getKnownVehicles();
+  }
 }

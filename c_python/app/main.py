@@ -56,12 +56,32 @@ app = FastAPI(
     description="YOLOv8-based damage detection; called by Nest backend.",
     lifespan=lifespan,
 )
+
+# F-6: Lock CORS to only the NestJS backend (and dev fallbacks). The
+# Python service is server-to-server only — the browser never calls it
+# directly. `allow_origins=["*"]` with credentials enabled was a quiet
+# DoS vector if the Python box was ever exposed publicly. Override the
+# allowed origins via the ALLOWED_ORIGINS env var (comma-separated)
+# in production.
+import os  # noqa: E402 — local import keeps top minimal
+_default_origins = [
+    "http://localhost:3000",  # NestJS dev
+    "http://127.0.0.1:3000",
+]
+_allowed_env = os.getenv("ALLOWED_ORIGINS", "").strip()
+ALLOWED_ORIGINS = (
+    [o.strip() for o in _allowed_env.split(",") if o.strip()]
+    if _allowed_env
+    else _default_origins
+)
+logger.info("CORS allow_origins = %s", ALLOWED_ORIGINS)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -226,6 +246,25 @@ async def cost_health():
         "model_loaded": cost_module._model is not None,
         "model_version": cost_module.COST_MODEL_VERSION,
         "configured_path": settings.cost_model_path,
+    }
+
+
+@app.get("/cost/known-vehicles")
+async def cost_known_vehicles():
+    """
+    Canonical list of vehicle makes, models and panels the cost model was
+    trained on. F-5: any vehicle not in this list gets the "+7% per
+    unknown feature" widening from predict_cost(). The frontend's
+    `vehicle.ts` should be a subset of `models` here — drift means user
+    estimates are silently inaccurate. Also exposed via NestJS at
+    /api/v1/live-detection/known-vehicles.
+    """
+    from app import cost as cost_module
+    return {
+        "model_version": cost_module.COST_MODEL_VERSION,
+        "makes": sorted(cost_module.KNOWN_MAKES),
+        "models": sorted(cost_module.KNOWN_MODELS),
+        "panels": sorted(cost_module.KNOWN_PANELS),
     }
 
 
