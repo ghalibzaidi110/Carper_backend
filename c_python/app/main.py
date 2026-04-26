@@ -132,6 +132,10 @@ class CostEstimateResponse(BaseModel):
     decision: str
     unknownFeatures: list[str]
     breakdown: CostEstimateBreakdown
+    # Identifies which trained model produced this prediction. Persisted
+    # downstream so a future audit can replay the same input against the
+    # same model version (or a different one for A/B testing).
+    modelVersion: str = "v1"
 
 
 @app.get("/health")
@@ -220,6 +224,7 @@ async def cost_health():
     return {
         "status": "ok",
         "model_loaded": cost_module._model is not None,
+        "model_version": cost_module.COST_MODEL_VERSION,
         "configured_path": settings.cost_model_path,
     }
 

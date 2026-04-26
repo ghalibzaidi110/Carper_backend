@@ -15,12 +15,17 @@ from app.config import settings
 warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
+# Cost-estimation model version. Bump when retraining; the version is
+# echoed in the cost-estimate response so callers can audit which model
+# produced any given prediction.
+COST_MODEL_VERSION: str = "v1"
+
 # Lazy-loaded sklearn pipeline (loaded on first prediction)
 _model: Any = None
 
 
 def _resolve_model_path() -> Path:
-    raw = settings.cost_model_path or "weights/cost_estimation.joblib"
+    raw = settings.cost_model_path or f"weights/cost_estimation.{COST_MODEL_VERSION}.joblib"
     p = Path(raw.strip())
     if not p.is_absolute():
         base = Path(__file__).resolve().parent.parent
@@ -350,6 +355,7 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
         "severity": severity,
         "decision": decision,
         "unknownFeatures": unknown_features,
+        "modelVersion": COST_MODEL_VERSION,
         "breakdown": {
             "repairMethod": repair_meth,
             "laborHours": labor_hrs,

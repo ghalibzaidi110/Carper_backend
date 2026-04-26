@@ -16,9 +16,13 @@ __pycache__/
 *.joblib
 models/
 
-# Exception: keep production weights so Render can load them on deploy
+# Exception: keep production weights so Render can load them on deploy.
+# Each new training run bumps the version suffix and adds another exception.
 !weights/best.pt
-!weights/cost_estimation.joblib
+!weights/cost_estimation.v*.joblib
+
+# Model cards are tiny JSON sidecars — always track them
+!weights/*.json
 
 # Local test harness (input images, output annotations, ad-hoc scripts)
 test/

@@ -246,6 +246,7 @@ export class LiveDetectionService {
   async getHealth(): Promise<any> {
     let pythonHealthy = false;
     let costModelLoaded = false;
+    let costModelVersion: string | null = null;
 
     try {
       const r1 = await firstValueFrom(
@@ -261,6 +262,7 @@ export class LiveDetectionService {
         this.httpService.get(`${this.pythonUrl}/cost/health`, { timeout: 2000 }),
       );
       costModelLoaded = !!r2.data?.model_loaded;
+      costModelVersion = r2.data?.model_version ?? null;
     } catch {
       costModelLoaded = false;
     }
@@ -268,6 +270,7 @@ export class LiveDetectionService {
     return {
       pythonHealthy,
       costModelLoaded,
+      costModelVersion,
       serpApiConfigured: !!this.serpApiKey,
       vendorCacheSize: this.cache.size,
       pythonUrl: this.pythonUrl,
