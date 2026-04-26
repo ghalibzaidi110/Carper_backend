@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 // Infrastructure
 import { PrismaModule } from './prisma/prisma.module';
@@ -38,6 +39,14 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     // Global config — makes process.env available everywhere
     ConfigModule.forRoot({ isGlobal: true }),
 
+    // Global rate limiting — protects auth, SerpApi vendor search,
+    // damage-detection upload, and any other public endpoint from abuse.
+    // Defaults are conservative; controllers can override with @Throttle().
+    ThrottlerModule.forRoot([
+      { name: 'short', ttl: 1_000, limit: 10 },     // burst: 10 req/sec
+      { name: 'medium', ttl: 60_000, limit: 100 },  // sustained: 100 req/min
+    ]),
+
     // Infrastructure (global modules)
     PrismaModule,
     CloudinaryModule,
@@ -61,6 +70,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
   ],
   controllers: [AppController],
   providers: [
+    // Global rate-limit guard — runs before auth so abuse is rejected cheaply
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     // Global JWT auth guard — all routes require auth unless @Public()
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Global roles guard — enforces @Roles() decorator

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 
 import { Public } from '../common/decorators';
 import { CostEstimateDto, VendorSearchDto } from './dto';
@@ -12,6 +13,13 @@ export class LiveDetectionController {
 
   @Public()
   @Post('vendors')
+  // Tight limit: each call hits SerpApi (paid quota). Even with the 10-min
+  // in-memory cache, 30 unique queries per minute is more than a real user
+  // ever needs. Override the global default which is too permissive here.
+  @Throttle({
+    short: { ttl: 1_000, limit: 2 },
+    medium: { ttl: 60_000, limit: 30 },
+  })
   @ApiOperation({
     summary: 'Search replacement-part vendors via SerpApi (Google Shopping)',
     description:
@@ -25,6 +33,11 @@ export class LiveDetectionController {
 
   @Public()
   @Post('estimate')
+  // Cost estimate hits the Python ML service. Looser than vendors (no per-
+  // call $$ cost) but still bounded so a tight loop doesn't pin Python's CPU.
+  @Throttle({
+    medium: { ttl: 60_000, limit: 60 },
+  })
   @ApiOperation({
     summary: 'Predict repair cost in PKR (proxy to Python ML model)',
     description:
@@ -38,6 +51,8 @@ export class LiveDetectionController {
 
   @Public()
   @Get('health')
+  // Health checks (probes, dashboards) shouldn't be throttled.
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Report Python service + SerpApi availability for live detection',
   })

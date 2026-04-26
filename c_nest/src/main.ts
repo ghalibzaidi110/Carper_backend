@@ -7,6 +7,18 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // ─── PROXY TRUST ─────────────────────────────────────────────
+  // When deployed behind a reverse proxy (nginx, Cloudflare, ALB), Express
+  // needs to honour X-Forwarded-* headers so req.ip resolves to the real
+  // client IP instead of the proxy. The rate limiter (@nestjs/throttler)
+  // keys requests by IP, so without this every request would look like
+  // it came from the proxy and a single user could exhaust the global
+  // limit for everyone.
+  // Set BEHIND_PROXY=true (or anything truthy) in production .env.
+  if (process.env.BEHIND_PROXY) {
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  }
+
   // ─── SECURITY ───────────────────────────────────────────────
   app.use(helmet.default());
 

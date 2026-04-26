@@ -59,6 +59,38 @@ export class CostEstimateDto {
   @IsString()
   panelLocation?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Panel bbox [x, y, w, h] in pixels — used by the backend as a ' +
+      'real-world reference for converting damage pixels to centimetres ' +
+      '(panel-as-ruler scaling). Optional; falls back to fixed-distance ' +
+      'estimate when missing.',
+    example: [140, 60, 1000, 600],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(4)
+  @ArrayMaxSize(4)
+  panelBbox?: number[];
+
+  @ApiPropertyOptional({
+    description: '[width, height] of the source frame in pixels',
+    example: [1920, 1080],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(2)
+  frameSize?: number[];
+
+  @ApiPropertyOptional({
+    enum: ['sedan', 'hatchback', 'suv', 'pickup', 'minivan'],
+    description: 'Vehicle body category — used to look up panel dimensions',
+  })
+  @IsOptional()
+  @IsIn(['sedan', 'hatchback', 'suv', 'pickup', 'minivan'])
+  vehicleCategory?: 'sedan' | 'hatchback' | 'suv' | 'pickup' | 'minivan';
+
   @ApiProperty({ example: 0.7 })
   @IsNumber()
   confidence!: number;
