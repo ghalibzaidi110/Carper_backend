@@ -172,13 +172,39 @@ KNOWN_PANELS = {
 }
 
 
-def derive_severity(area_ratio: float, confidence: float) -> str:
-    score = area_ratio * 0.7 + (confidence - 0.5) * 0.6
-    if score < 0.02:
+def derive_severity_from_panel_ratio(panel_ratio: float) -> str:
+    """
+    Severity from damage-as-fraction-of-panel — used when we have real
+    measurements via panel-as-ruler. A "10% of hood" dent feels intuitively
+    severe; a "0.5% of hood" dent feels minor. These thresholds match
+    body-shop heuristics.
+    """
+    if panel_ratio < 0.01:   # < 1% of panel
         return "minor"
-    if score < 0.06:
+    if panel_ratio < 0.05:   # 1–5%
         return "moderate"
-    if score < 0.14:
+    if panel_ratio < 0.15:   # 5–15%
+        return "significant"
+    return "severe"          # >= 15%
+
+
+def derive_severity(area_ratio: float, _confidence: float) -> str:
+    """Severity is driven by damage SIZE only, not by detection confidence.
+
+    The previous formula combined area_ratio and confidence into a single
+    score, which meant a high-confidence detection of a tiny region would
+    be classified as 'severe' — flipping the repair/replace decision and
+    inflating the cost estimate. Confidence is already used at the YOLO
+    step to filter weak detections; it shouldn't drive severity again here.
+
+    Buckets are set so a small dent on a hood (~3% of frame) is moderate,
+    not severe. Tune these against real labelled data when available.
+    """
+    if area_ratio < 0.01:
+        return "minor"
+    if area_ratio < 0.04:
+        return "moderate"
+    if area_ratio < 0.10:
         return "significant"
     return "severe"
 
@@ -214,18 +240,58 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
     frame_area = float(payload.get("frameArea") or (1280 * 720))
     area_ratio = (bw * bh) / frame_area
 
-    if payload.get("areaCm2") is not None:
+    # Compute area in cm². Three possible sources, in order of preference:
+    #   1. panel-as-ruler — uses detected panel size as a known reference
+    #   2. client-provided — frontend already computed (legacy)
+    #   3. fallback — fixed-distance assumption (least accurate)
+    area_cm2: float
+    perim_cm: float
+    scale_source: str
+
+    panel_bbox = payload.get("panelBbox")
+    raw_category = payload.get("vehicleCategory")
+    # Resolve category: explicit, then look-up by make/model, default sedan
+    from app.panel_dimensions import (  # noqa: PLC0415 — local import keeps module load light
+        compute_real_area_cm2,
+        get_panel_size_cm,
+        resolve_vehicle_category,
+    )
+    category = raw_category or resolve_vehicle_category(
+        payload.get("vehicleMake"), payload.get("vehicleModel"),
+    )
+    panel_real_cm = get_panel_size_cm(raw_panel, category) if raw_panel else None
+    panel_scaled = (
+        compute_real_area_cm2(bbox, panel_bbox, panel_real_cm)
+        if panel_bbox is not None and panel_real_cm is not None
+        else None
+    )
+
+    if panel_scaled is not None:
+        area_cm2, perim_cm = panel_scaled
+        scale_source = "panel_reference"
+    elif payload.get("areaCm2") is not None:
         area_cm2 = round(float(payload["areaCm2"]), 2)
         perim_cm = round(float(payload.get("perimCm", 0)), 2)
+        scale_source = "client_provided"
     else:
+        # Legacy fixed-distance estimate. Wildly inaccurate but better
+        # than nothing — surface in the response so the UI can warn.
         px_per_cm = (frame_area ** 0.5) / 60
         width_cm = bw / px_per_cm
         height_cm = bh / px_per_cm
         area_cm2 = round(width_cm * height_cm, 2)
         perim_cm = round(2 * (width_cm + height_cm), 2)
+        scale_source = "fallback_estimate"
 
     if payload.get("severity") in ("minor", "moderate", "significant", "severe"):
         severity = payload["severity"]
+    elif scale_source == "panel_reference" and panel_real_cm is not None:
+        # Use damage-as-fraction-of-panel when we have real measurements.
+        # This is invariant to camera distance and matches what a body-shop
+        # estimator would intuitively use ("a 10% hood dent is a serious dent").
+        panel_total_cm2 = panel_real_cm[0] * panel_real_cm[1]
+        panel_ratio = area_cm2 / panel_total_cm2 if panel_total_cm2 > 0 else 0
+        severity = derive_severity_from_panel_ratio(panel_ratio)
     else:
         severity = derive_severity(area_ratio, confidence)
 
@@ -292,5 +358,6 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
             "perimeterCm": perim_cm,
             "material": material,
             "severityScore": severity,
+            "scaleSource": scale_source,
         },
     }

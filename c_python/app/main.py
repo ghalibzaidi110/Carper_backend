@@ -92,6 +92,11 @@ class DetectResponse(BaseModel):
 class CostEstimateRequest(BaseModel):
     className: str = "dent"
     panelLocation: str | None = None
+    # Panel-as-ruler scaling — optional. When present, the backend uses the
+    # panel as a known-size reference to convert damage pixels into real cm².
+    panelBbox: list[float] | None = None
+    frameSize: list[float] | None = None  # [width, height] of source frame
+    vehicleCategory: str | None = None    # sedan|hatchback|suv|pickup|minivan
     confidence: float = 0.5
     bbox: list[float] = [0, 0, 100, 100]   # [x, y, w, h] in pixels
     frameArea: float | None = None
@@ -111,6 +116,11 @@ class CostEstimateBreakdown(BaseModel):
     perimeterCm: float
     material: str
     severityScore: str
+    # How was areaCm2 computed?
+    #   "panel_reference"  — used the detected panel as a known-size ruler
+    #   "fallback_estimate" — legacy fixed-distance assumption (less accurate)
+    #   "client_provided"  — frontend computed it (we trust them)
+    scaleSource: str = "fallback_estimate"
 
 
 class CostEstimateResponse(BaseModel):

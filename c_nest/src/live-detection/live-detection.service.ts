@@ -50,6 +50,9 @@ export class LiveDetectionService {
   private readonly pythonUrl: string;
   private readonly cache = new Map<string, CacheEntry>();
   private readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+  // Hard cap on cache size — protects against attackers spamming unique
+  // queries to grow the Map until we OOM. When we hit the cap we prune.
+  private readonly CACHE_MAX_ENTRIES = 1000;
 
   constructor(
     private readonly configService: ConfigService,
@@ -67,6 +70,33 @@ export class LiveDetectionService {
     }
   }
 
+  /**
+   * Drop expired entries. If still over the size cap after that, drop the
+   * oldest entries until we're under cap. Cheap to call — O(N) over the
+   * Map, only fires when we hit CACHE_MAX_ENTRIES.
+   */
+  private pruneCache(): void {
+    const now = Date.now();
+    const before = this.cache.size;
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.time >= this.CACHE_TTL) this.cache.delete(key);
+    }
+    if (this.cache.size > this.CACHE_MAX_ENTRIES) {
+      // Map iteration order is insertion order — drop oldest first.
+      const toDrop = this.cache.size - this.CACHE_MAX_ENTRIES;
+      let dropped = 0;
+      for (const key of this.cache.keys()) {
+        this.cache.delete(key);
+        if (++dropped >= toDrop) break;
+      }
+    }
+    if (this.cache.size !== before) {
+      this.logger.debug(
+        `Vendor cache pruned: ${before} → ${this.cache.size} entries`,
+      );
+    }
+  }
+
   // ─── A) Vendor search via SerpApi (Google Shopping) ──────────────────────
 
   async searchVendors(dto: VendorSearchDto): Promise<VendorSearchResult> {
@@ -79,8 +109,12 @@ export class LiveDetectionService {
     const cacheKey = `${dto.damageType}|${query}`;
 
     const cached = this.cache.get(cacheKey);
-    if (cached && Date.now() - cached.time < this.CACHE_TTL) {
-      return cached.data;
+    if (cached) {
+      if (Date.now() - cached.time < this.CACHE_TTL) {
+        return cached.data;
+      }
+      // Expired — drop now so the Map doesn't accumulate stale entries.
+      this.cache.delete(cacheKey);
     }
 
     if (!this.serpApiKey) {
@@ -133,6 +167,11 @@ export class LiveDetectionService {
           ? { vendors, fallbackEstimate: null }
           : this.makeFallback(config, 'No priced products found');
 
+      // Bound the cache. Prune (TTL + size cap) once we hit the cap so
+      // a flood of unique queries can't grow the Map without limit.
+      if (this.cache.size >= this.CACHE_MAX_ENTRIES) {
+        this.pruneCache();
+      }
       this.cache.set(cacheKey, { data: result, time: Date.now() });
       return result;
     } catch (err: any) {
