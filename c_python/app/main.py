@@ -41,8 +41,15 @@ async def lifespan(app: FastAPI):
             from app.cost import _load_cost_model
             await asyncio.to_thread(_load_cost_model)
         except Exception as e:
+            # D-4: fail loudly at startup. Previously this only logged a
+            # warning, which meant a broken/missing model file would let
+            # the service "start successfully" and then surface as 5xx
+            # errors on the first /cost-estimate request — possibly hours
+            # later, after the deploy looked healthy. Strict startup
+            # surfaces the failure immediately so the orchestrator can
+            # roll back / alert before any user is affected.
             logger.error("Failed to load cost model: %s", e)
-            # Don't raise — cost endpoint will surface the error if hit
+            raise
     else:
         logger.info("No COST_MODEL_PATH set; /cost-estimate will fail until configured")
 
