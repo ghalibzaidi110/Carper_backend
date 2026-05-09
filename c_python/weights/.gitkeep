@@ -1,1 +1,3 @@
-# Place best.pt here (copy from yolov8n_balanced/weights/best.pt if needed)
+# Place model weights here:
+#   best.pt — YOLOv8 damage detection weights
+#   car_damage_cost_regression_pipeline_v4.joblib — cost estimation model

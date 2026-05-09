@@ -1,0 +1,31 @@
+deploy_parts_v2.py - Parts Model Deployment Script
+=====================================================
+
+PURPOSE:
+Automates deploying the trained parts-segmentation v2 ONNX model to the frontend.
+
+WHAT IT DOES:
+
+1. Copies ONNX File:
+   - Copies the exported ONNX model to frontend/public/models/parts.v2.onnx.
+   - Reports file size for verification.
+
+2. Writes Metadata JSON:
+   - Creates parts.v2.json with model info: version, architecture, input/output
+     shapes, class list, file size, training dataset, changelog.
+   - Optionally includes evaluation metrics from the training run.
+
+3. Prints Required Code Changes:
+   - Lists manual changes needed in frontend part-segmenter.ts:
+     a) Update PARTS_MODEL_VERSION to "v2".
+     b) Replace PART_CLASS_KEYS (remove "object" at index 18).
+     c) Remove "object" from PART_DISPLAY map.
+     d) Remove SKIP_PART_KEYS constant (no longer needed).
+     e) Update CONF_THRESHOLD based on PR curve analysis.
+     f) Delete old v1 model files.
+
+USAGE:
+  python deploy_parts_v2.py \
+    --onnx runs/segment/carparts-v2/weights/best.onnx \
+    --metrics runs/segment/carparts-v2/carparts_seg_v2_metrics.json \
+    --frontend-dir ../../Carper-frontned

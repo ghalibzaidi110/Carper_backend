@@ -1,0 +1,29 @@
+config.py - Service Configuration
+====================================
+
+PURPOSE:
+Centralized configuration for the damage detection FastAPI service.
+Loads settings from environment variables and .env file.
+
+WHAT IT DOES:
+
+1. Settings Class (pydantic BaseSettings):
+   - port: Server port (default 8000)
+   - host: Server bind address (default 0.0.0.0)
+   - model_path: Path to YOLOv8 best.pt weights (None = stub mode)
+   - cost_model_path: Path to cost estimation .joblib pipeline (None = cost endpoint disabled)
+   - log_level: Logging level (default "info")
+   - conf_threshold: YOLO minimum confidence (default 0.25)
+   - iou_threshold: YOLO NMS IoU threshold (default 0.45)
+   - imgsz: YOLO input image size (default 640, matches frontend ONNX)
+   - max_det: Maximum detections per image (default 300)
+   - cost_model_b_path: Optional second cost model for A/B testing
+   - cost_model_b_weight: Fraction of traffic routed to model B (0.0 = all A)
+
+2. Environment Loading:
+   - Reads from c_python/.env file.
+   - Environment variables override .env values.
+   - Unknown env vars are ignored (extra="ignore").
+
+All ML-relevant parameters (confidence thresholds, image size, model paths)
+are configurable without code changes via environment variables.

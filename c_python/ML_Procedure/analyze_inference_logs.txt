@@ -1,0 +1,39 @@
+analyze_inference_logs.py - Inference Log Analysis
+=====================================================
+
+PURPOSE:
+Reads JSONL logs produced by inference_logger.py and outputs statistics for
+model monitoring, threshold tuning, and drift detection.
+
+WHAT IT DOES:
+
+1. Detection Analysis (analyze_detections):
+   - Total detection count and cache hit rate.
+   - Class frequency distribution (e.g., dent 45%, scratch 30%, ...).
+     Shifts in this distribution indicate data drift.
+   - Per-class confidence percentiles (p10, p25, p50, p75, p90, mean).
+     Used for tuning per-class confidence thresholds.
+   - Inference latency percentiles (p50, p90, p99) excluding cache hits.
+
+2. Cost Analysis (analyze_costs):
+   - Cost distribution: mean, median, std, min, max in PKR.
+   - Model version split: traffic % and mean cost per version (A/B comparison).
+   - Cost by severity: mean and median for minor/moderate/significant/severe.
+   - Cost by damage class: mean and median per class.
+   - Scale source distribution: % using panel_reference vs fallback_estimate.
+   - Unknown feature frequency: how often vehicleMake/vehicleModel/panel is unknown.
+   - Prediction interval width: mean, median, p90.
+   - Cost prediction latency percentiles.
+
+3. CSV Export (--export csv):
+   - Exports raw detection and cost records to CSV files.
+   - Nested fields (lists, dicts) are JSON-serialized.
+
+4. Date Filtering (--since YYYY-MM-DD):
+   - Filters log files by date suffix in filename.
+   - Useful for analyzing recent data only.
+
+USAGE:
+  python analyze_inference_logs.py --log-dir ../logs
+  python analyze_inference_logs.py --log-dir ../logs --since 2026-05-01
+  python analyze_inference_logs.py --log-dir ../logs --export csv

@@ -1,0 +1,55 @@
+engine.py - YOLOv8 Damage Detection Engine
+===========================================
+
+PURPOSE:
+Loads a YOLOv8 model (best.pt) once at startup and runs inference on car images
+to detect damage types (dent, scratch, crack, glass_shatter, lamp_broken, tire_flat).
+
+WHAT IT DOES:
+
+1. Model Loading (_load_model):
+   - Lazily loads YOLOv8 weights from the path specified in settings.model_path.
+   - Resolves relative paths against the c_python/ directory.
+   - Model is loaded once and reused for all subsequent requests.
+
+2. Image Download (_download_image):
+   - Downloads images from URLs using a shared async httpx client.
+   - Client is created once with connection pooling (max 20 connections).
+
+3. Per-Class Confidence Filtering:
+   - Each damage class has its own minimum confidence threshold (e.g., dent=0.30, scratch=0.35).
+   - Detections below their class threshold are dropped.
+   - Thresholds match the frontend (classes.ts) for consistency.
+
+4. Class-Aware NMS (_apply_per_class_filters):
+   - After confidence filtering, applies non-maximum suppression per class.
+   - Each class has its own IoU threshold (e.g., scratch=0.30, tire_flat=0.60).
+   - Higher-confidence boxes suppress overlapping lower-confidence boxes of the same class.
+   - Different classes never suppress each other.
+
+5. Inference (_run_inference):
+   - Converts input image bytes to numpy array via PIL.
+   - Runs YOLO predict with configurable conf, iou, imgsz, max_det.
+   - Extracts bounding boxes, class IDs, and confidence scores.
+   - Applies per-class filtering and NMS.
+   - Generates an annotated image (boxes + labels drawn) as JPEG bytes.
+   - Logs detection results for drift monitoring and PR curve analysis.
+
+6. Caching:
+   - Results are cached by SHA-256 hash of URL or image bytes.
+   - Cache TTL is 5 minutes, max 200 entries.
+   - Expired entries are evicted on insert; oldest entry dropped if over capacity.
+
+7. Public API:
+   - run_yolo_detection(image_url) - downloads image from URL, runs inference, returns results.
+   - run_yolo_on_bytes(image_bytes) - runs inference directly on uploaded bytes.
+   - Both return: {has_damage, confidence, detections, processed_image_url}.
+   - processed_image_url is a base64 data URL of the annotated image.
+
+OUTPUT FORMAT:
+{
+    "has_damage": true/false,
+    "confidence": 0.0-1.0 (max detection confidence),
+    "detections": [{"label": "dent", "confidence": 0.85, "bbox": [x1, y1, x2, y2]}, ...],
+    "processed_image_url": "data:image/jpeg;base64,..." or original URL
+}

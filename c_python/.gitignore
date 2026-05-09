@@ -24,6 +24,9 @@ models/
 # Model cards are tiny JSON sidecars — always track them
 !weights/*.json
 
+# Inference logs (JSONL, generated at runtime)
+logs/
+
 # Local test harness (input images, output annotations, ad-hoc scripts)
 test/
 

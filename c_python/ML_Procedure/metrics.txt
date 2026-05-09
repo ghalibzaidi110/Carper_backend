@@ -1,0 +1,39 @@
+metrics.py - Prometheus Metrics
+==================================
+
+PURPOSE:
+Exposes Prometheus-compatible counters, histograms, and gauges for monitoring
+YOLO detection and cost prediction in production via GET /metrics.
+
+WHAT IT DOES:
+
+1. Detection Metrics:
+   - carper_detection_requests_total: Counter by source (url/upload/batch).
+   - carper_detections_total: Counter by class_name (dent, scratch, etc.).
+   - carper_detection_confidence: Histogram of confidence scores per class.
+     Buckets: 0.1 to 1.0 in 0.1 steps. Used for threshold tuning.
+   - carper_detection_latency_ms: Histogram of inference latency.
+     Buckets: 50, 100, 200, 500, 1000, 2000, 5000ms.
+   - carper_detection_cache_hits_total: Counter of cache hits.
+
+2. Cost Metrics:
+   - carper_cost_requests_total: Counter by model_version (v4, v2, etc.).
+   - carper_cost_predicted_pkr: Histogram of predicted costs by severity.
+     Buckets: 1K to 500K PKR.
+   - carper_cost_interval_width_pkr: Histogram of prediction interval width.
+   - carper_cost_latency_ms: Histogram of cost prediction latency.
+   - carper_cost_unknown_features_total: Counter by feature name.
+   - carper_cost_scale_source_total: Counter by source (panel_reference/fallback_estimate).
+
+3. Recording Functions:
+   - record_detection(): Called after each YOLO inference. Skips latency/detail
+     recording on cache hits (only increments request counter + cache hit counter).
+   - record_cost(): Called after each cost prediction. Records all cost metrics.
+
+4. Graceful Degradation:
+   - If prometheus_client not installed, all record_* calls become no-ops.
+   - GET /metrics returns "prometheus_client not installed" text.
+
+INTEGRATION:
+Prometheus scrapes GET /metrics. Grafana dashboards visualize detection throughput,
+confidence distributions, cost drift, and latency percentiles.

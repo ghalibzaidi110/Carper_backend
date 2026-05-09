@@ -1,0 +1,41 @@
+panel_dimensions.py - Panel-as-Ruler Scaling
+===============================================
+
+PURPOSE:
+Converts pixel-based damage measurements into real-world centimetres by using
+a detected car panel as a known-size reference object. Eliminates the need for
+fixed camera-distance assumptions.
+
+WHAT IT DOES:
+
+1. Panel Dimension Database (PANEL_DIMENSIONS_CM):
+   - Stores average physical dimensions (width_cm, height_cm) for 22 car panels
+     across 5 vehicle categories: sedan, hatchback, suv, pickup, minivan.
+   - Dimensions sourced from manufacturer service manuals and body-shop guides
+     for the Pakistan market.
+   - Example: sedan hood = 130cm x 90cm, SUV front_bumper = 180cm x 60cm.
+
+2. get_panel_size_cm(panel, category):
+   - Looks up the real-world size of a panel for a given vehicle category.
+   - Returns (width_cm, height_cm) or None if panel/category unknown.
+
+3. compute_real_area_cm2(damage_bbox, panel_bbox, panel_real_cm):
+   - Core scaling function.
+   - Takes damage bounding box (pixels), panel bounding box (pixels), and
+     panel real dimensions (cm).
+   - Computes px_per_cm from both width and height axes of the panel.
+   - Picks the MORE CONSERVATIVE (larger px_per_cm) to guard against panels
+     partially out of frame.
+   - Converts damage bbox to real cm, returns (area_cm2, perimeter_cm).
+
+4. Vehicle Category Resolution:
+   - VEHICLE_CATEGORIES dict maps (Make, Model) pairs to categories.
+   - Covers Toyota, Honda, Suzuki, Hyundai, Kia, Nissan, Daihatsu models
+     common in Pakistan.
+   - resolve_vehicle_category(make, model) returns category, defaulting to "sedan".
+
+WHY IT MATTERS:
+The previous fixed-distance formula (px / (sqrt(frame_area) / 60)) fails when
+the user holds the phone closer or farther. Panel-as-ruler is camera-distance
+invariant because both damage and panel scale together. Even with +/-20% panel
+size error, results are far more accurate than the fixed-distance fallback.

@@ -1,31 +1,42 @@
 """
-Cost-estimation engine — loads cost_estimation.joblib (sklearn RandomForest)
-and predicts repair cost in PKR with breakdown + repair/replace decision.
+Cost-estimation engine — loads the v4 GradientBoosting pipeline and predicts
+repair cost in PKR with breakdown + repair/replace decision.
 
 Ported from new-webxr/api/predict.py. Same input/output contract so the
 existing WebXR client + the new Carper live-detection page can both call it.
+
+Supports A/B testing: set COST_MODEL_B_PATH and COST_MODEL_B_WEIGHT in .env
+to route a fraction of requests to a second model version.
 """
+import hashlib
+import json as _json
 import logging
-import warnings
+import time
 from pathlib import Path
 from typing import Any
 
 from app.config import settings
 
-warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
 # Cost-estimation model version. Bump when retraining; the version is
 # echoed in the cost-estimate response so callers can audit which model
 # produced any given prediction.
-COST_MODEL_VERSION: str = "v1"
+COST_MODEL_VERSION: str = "v4"
+COST_MODEL_B_VERSION: str = "v2"
 
-# Lazy-loaded sklearn pipeline (loaded on first prediction)
+# Error metrics from v4 model evaluation (car_damage_cost_model_metrics_v4.json).
+# Used to derive data-driven confidence bands instead of hardcoded percentages.
+_MODEL_TEST_MAE: float = 2_789.47
+_MODEL_TEST_RMSE: float = 3_563.51
+_MODEL_CV_RMSE: float = 5_073.01  # more conservative, cross-validated
+
+# Lazy-loaded sklearn pipelines
 _model: Any = None
+_model_b: Any = None
 
 
-def _resolve_model_path() -> Path:
-    raw = settings.cost_model_path or f"weights/cost_estimation.{COST_MODEL_VERSION}.joblib"
+def _resolve_path(raw: str) -> Path:
     p = Path(raw.strip())
     if not p.is_absolute():
         base = Path(__file__).resolve().parent.parent
@@ -33,8 +44,13 @@ def _resolve_model_path() -> Path:
     return p
 
 
+def _resolve_model_path() -> Path:
+    raw = settings.cost_model_path or f"weights/car_damage_cost_regression_pipeline_{COST_MODEL_VERSION}.joblib"
+    return _resolve_path(raw)
+
+
 def _load_cost_model():
-    """Load sklearn cost-estimation pipeline once. Safe to call repeatedly."""
+    """Load primary sklearn cost-estimation pipeline once."""
     global _model
     if _model is not None:
         return _model
@@ -47,11 +63,47 @@ def _load_cost_model():
     if not model_path.exists():
         raise FileNotFoundError(
             f"Cost model not found: {model_path}. "
-            f"Set COST_MODEL_PATH or copy cost_estimation.joblib into c_python/weights/."
+            f"Set COST_MODEL_PATH or place the v4 joblib into c_python/weights/."
         )
     _model = joblib.load(model_path)
-    logger.info("Loaded cost model from %s", model_path)
+    logger.info("Loaded cost model A from %s", model_path)
     return _model
+
+
+def _load_cost_model_b():
+    """Load model B for A/B testing. Returns None if not configured."""
+    global _model_b
+    if _model_b is not None:
+        return _model_b
+    if not settings.cost_model_b_path:
+        return None
+    try:
+        import joblib  # type: ignore[import-untyped]
+    except ImportError:
+        return None
+    model_path = _resolve_path(settings.cost_model_b_path)
+    if not model_path.exists():
+        logger.warning("Cost model B not found: %s — A/B disabled", model_path)
+        return None
+    _model_b = joblib.load(model_path)
+    logger.info("Loaded cost model B from %s", model_path)
+    return _model_b
+
+
+def _select_model(seed: str) -> tuple[Any, str]:
+    """Select model A or B deterministically based on seed.
+
+    Same seed always selects the same model — enables reproducible A/B tests.
+    """
+    model_b = _load_cost_model_b()
+    if model_b is not None and settings.cost_model_b_weight > 0:
+        h = hashlib.sha256(seed.encode("utf-8")).hexdigest()
+        bucket = int(h[:8], 16) / 0xFFFFFFFF
+        if bucket < settings.cost_model_b_weight:
+            logger.info("A/B: selected model B (%s) seed=%s bucket=%.4f",
+                        COST_MODEL_B_VERSION, seed[:16], bucket)
+            return model_b, COST_MODEL_B_VERSION
+    return _load_cost_model(), COST_MODEL_VERSION
 
 
 # ── Feature derivation maps ─────────────────────────────────────────────────
@@ -111,8 +163,7 @@ def get_repair_decision(panel: str | None, damage: str, severity: str) -> str:
     if not panel or panel == "object":
         return "unknown"
 
-    low_mod = severity in ("low", "moderate", "minor")
-    sig_sev = severity in ("significant", "severe")  # noqa: F841 (kept for parity)
+    low_mod = severity in ("minor", "moderate")
 
     if panel in _BODY_PANELS:
         if damage in ("dent", "scratch"):
@@ -129,7 +180,7 @@ def get_repair_decision(panel: str | None, damage: str, severity: str) -> str:
         if damage == "scratch":
             return "repair" if low_mod else "replace"
         if damage == "crack":
-            return "repair" if severity in ("low", "minor") else "replace"
+            return "repair" if severity == "minor" else "replace"
         return "unknown"
 
     if panel in _LIGHT_PANELS:
@@ -173,7 +224,8 @@ KNOWN_PANELS = {
     "back_bumper", "back_door", "back_glass", "back_left_door", "back_left_light",
     "back_light", "back_right_door", "back_right_light", "front_bumper", "front_door",
     "front_glass", "front_left_door", "front_left_light", "front_light", "front_right_door",
-    "front_right_light", "hood", "left_mirror", "object", "right_mirror",
+    "front_right_light", "hood", "left_mirror", "right_mirror",
+    "tailgate", "trunk", "wheel",
 }
 
 
@@ -214,19 +266,100 @@ def derive_severity(area_ratio: float, _confidence: float) -> str:
     return "severe"
 
 
+def compute_estimate_confidence(
+    scale_source: str,
+    unknown_features: list[str],
+    decision: str,
+) -> float:
+    """Compute a 0–1 confidence score for the cost estimate.
+
+    Factors:
+      - scale_source: panel_reference (best) vs fallback_estimate (worst)
+      - unknown_features: each unknown degrades confidence
+      - decision: "unknown" repair decision degrades confidence
+    """
+    if scale_source == "webxr_depth":
+        base = 0.95
+    elif scale_source == "panel_reference":
+        base = 0.90
+    elif scale_source == "depth_model":
+        base = 0.85
+    elif scale_source == "client_provided":
+        base = 0.70
+    else:
+        base = 0.40  # fallback_estimate
+
+    # Each unknown feature drops confidence
+    base -= len(unknown_features) * 0.15
+
+    # Unknown repair decision = less trustworthy
+    if decision == "unknown":
+        base -= 0.10
+
+    return round(max(0.0, min(1.0, base)), 2)
+
+
+def _compute_error_margin(predicted: float, unknown_features: list[str]) -> int:
+    """Data-driven error margin blending absolute RMSE with prediction-scaled component.
+
+    For small predictions the absolute RMSE floor dominates (prevents
+    absurdly tiny bands). For large predictions the relative component
+    dominates (prevents absurdly wide bands). Unknown features widen
+    the band further because the model is extrapolating.
+    """
+    abs_component = _MODEL_CV_RMSE
+    rel_component = predicted * 0.05
+    base_margin = max(abs_component, rel_component)
+
+    # Each unknown adds 15% of base margin; capped at 2x total.
+    unknown_multiplier = 1.0 + min(len(unknown_features) * 0.15, 1.0)
+    return round(base_margin * unknown_multiplier)
+
+
 def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
     """Predict repair cost. Same input/output as the standalone Flask /predict."""
     import pandas as pd  # type: ignore[import-untyped]
 
-    model = _load_cost_model()
+    t0 = time.perf_counter()
+
+    # Deterministic A/B seed: explicit requestId if provided, else hash of
+    # the full payload so identical inputs always route to the same model.
+    request_id = payload.get("requestId")
+    if request_id:
+        ab_seed = request_id
+    else:
+        canonical = _json.dumps(
+            {k: v for k, v in sorted(payload.items()) if k != "requestId"},
+            separators=(",", ":"),
+            default=str,
+        )
+        ab_seed = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        request_id = ab_seed[:12]
+
+    model, model_version = _select_model(ab_seed)
 
     class_name = payload.get("className", "dent")
     raw_panel = payload.get("panelLocation") or "hood"
-    confidence = float(payload.get("confidence", 0.5))
     bbox = payload.get("bbox", [0, 0, 100, 100])
+
+    try:
+        confidence = float(payload.get("confidence", 0.5))
+        confidence = max(0.0, min(1.0, confidence))
+    except (TypeError, ValueError):
+        confidence = 0.5
+
+    if not isinstance(bbox, (list, tuple)) or len(bbox) < 4:
+        raise ValueError(f"bbox must have 4 elements, got {bbox!r}")
+
     vehicle_make = payload.get("vehicleMake") or "Toyota"
     vehicle_model = payload.get("vehicleModel") or "Corolla"
-    vehicle_year = int(payload.get("vehicleYear") or 2020)
+
+    try:
+        multiple_dents = max(1, int(payload.get("multipleDentsCount") or 1))
+    except (TypeError, ValueError):
+        multiple_dents = 1
+
+    parts_cost_input = payload.get("partsCost")
 
     # Track unknown features → widen error band
     unknown_features: list[str] = []
@@ -241,8 +374,10 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
     if panel is None:
         unknown_features.append("panelLocation")
 
-    bw, bh = float(bbox[2]), float(bbox[3])
+    bw, bh = max(0.0, float(bbox[2])), max(0.0, float(bbox[3]))
     frame_area = float(payload.get("frameArea") or (1280 * 720))
+    if frame_area <= 0:
+        frame_area = 1280 * 720
     area_ratio = (bw * bh) / frame_area
 
     # Compute area in cm². Three possible sources, in order of preference:
@@ -271,7 +406,16 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
         else None
     )
 
-    if panel_scaled is not None:
+    client_scale = payload.get("scaleSource")
+
+    if client_scale == "webxr_depth" and payload.get("areaCm2") is not None:
+        # Tier 1: WebXR AR sensor — absolute measurements, trust them
+        area_cm2 = round(float(payload["areaCm2"]), 2)
+        perim_cm = round(float(payload.get("perimCm", 0)), 2)
+        scale_source = "webxr_depth"
+    elif panel_scaled is not None:
+        # Tier 3: panel-as-ruler (also used when client says "depth_model"
+        # since the depth model only improves dent classification, not area)
         area_cm2, perim_cm = panel_scaled
         scale_source = "panel_reference"
     elif payload.get("areaCm2") is not None:
@@ -279,8 +423,8 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
         perim_cm = round(float(payload.get("perimCm", 0)), 2)
         scale_source = "client_provided"
     else:
-        # Legacy fixed-distance estimate. Wildly inaccurate but better
-        # than nothing — surface in the response so the UI can warn.
+        # Tier 4: Legacy fixed-distance estimate. Wildly inaccurate but
+        # better than nothing — surface in the response so the UI can warn.
         px_per_cm = (frame_area ** 0.5) / 60
         width_cm = bw / px_per_cm
         height_cm = bh / px_per_cm
@@ -288,8 +432,10 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
         perim_cm = round(2 * (width_cm + height_cm), 2)
         scale_source = "fallback_estimate"
 
+    severity_detail: str
     if payload.get("severity") in ("minor", "moderate", "significant", "severe"):
         severity = payload["severity"]
+        severity_detail = f"{severity.capitalize()} (client-provided)"
     elif scale_source == "panel_reference" and panel_real_cm is not None:
         # Use damage-as-fraction-of-panel when we have real measurements.
         # This is invariant to camera distance and matches what a body-shop
@@ -297,8 +443,13 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
         panel_total_cm2 = panel_real_cm[0] * panel_real_cm[1]
         panel_ratio = area_cm2 / panel_total_cm2 if panel_total_cm2 > 0 else 0
         severity = derive_severity_from_panel_ratio(panel_ratio)
+        pct_str = f"{panel_ratio * 100:.1f}%"
+        panel_name = raw_panel.replace("_", " ")
+        severity_detail = f"{severity.capitalize()} ({pct_str} of {panel_name} area)"
     else:
         severity = derive_severity(area_ratio, confidence)
+        pct_str = f"{area_ratio * 100:.1f}%"
+        severity_detail = f"{severity.capitalize()} ({pct_str} of frame, approximate)"
 
     dent_type = DENT_TYPE_MAP.get(class_name, "dent")
     material = PANEL_MATERIAL_MAP.get(raw_panel, "Steel")
@@ -307,32 +458,42 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
     decision = get_repair_decision(raw_panel, class_name, severity)
     if decision == "replace":
         repair_meth = "Panel_Replacement"
+    elif decision == "repair" and repair_meth == "Panel_Replacement":
+        # Don't use Panel_Replacement for repairable damage (e.g. minor tire_flat)
+        repair_meth = "PDR"
 
     paint_dam = "yes" if dent_type in ("scratch", "crack") else "no"
-    dent_depth = "deep" if severity in ("significant", "severe") else "shallow"
-    metal_str = "yes" if (dent_type == "dent" and severity == "severe") else "no"
+
+    # Dent depth: use actual measurement when available, else heuristic
+    depth_mm = payload.get("depthMm")
+    depth_source = payload.get("depthSource", "heuristic")
+    if depth_mm is not None and depth_source == "webxr":
+        dent_depth = "deep" if depth_mm > 5.0 else "shallow"
+    elif payload.get("depthCategory"):
+        depth_cat = payload["depthCategory"]
+        dent_depth = "deep" if depth_cat == "deep" else "shallow"
+        if depth_source == "heuristic":
+            depth_source = "depth_model"
+    else:
+        dent_depth = "deep" if severity in ("significant", "severe") else "shallow"
 
     labor_hrs = LABOR_MAP[severity]
     paint_cost = PAINT_MAP[severity] if paint_dam == "yes" else 0
-    parts_cost = 0
+    parts_cost = float(parts_cost_input) if parts_cost_input is not None else 0
     repair_days = DAYS_MAP[severity]
 
+    # v4 model uses 13 features (dropped Record_ID, On_Body_Line,
+    # Vehicle_Year, Vehicle_Make, Damage_Severity_Score, Paint_Damaged,
+    # Metal_Stretched — all pruned by feature importance < 0.0005).
     sample = pd.DataFrame([{
-        "Record_ID": 0,
-        "Vehicle_Make": vehicle_make,
         "Vehicle_Model": vehicle_model,
-        "Vehicle_Year": vehicle_year,
         "Panel_Location": panel,
         "Panel_Material": material,
         "Dent_Type": dent_type,
         "Dent_Area_Cm_Squared": area_cm2,
         "Dent_Perimeter_Centimetres": perim_cm,
         "Dent_Depth": dent_depth,
-        "Multiple_Dents_Count": 1,
-        "On_Body_Line": "no",
-        "Paint_Damaged": paint_dam,
-        "Metal_Stretched": metal_str,
-        "Damage_Severity_Score": severity,
+        "Multiple_Dents_Count": max(1, multiple_dents),
         "Repair_Method": repair_meth,
         "Labor_Hours": labor_hrs,
         "Paint_Materials_Cost": paint_cost,
@@ -340,12 +501,72 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
         "Repair_Time_Days": repair_days,
     }])
 
-    predicted = float(model.predict(sample)[0])
+    predicted = max(0.0, float(model.predict(sample)[0]))
+    # Cap absurd predictions (numeric instability guard)
+    MAX_COST = 10_000_000
+    if predicted > MAX_COST:
+        logger.warning("Predicted cost %s exceeds cap %s — clamping", predicted, MAX_COST)
+        predicted = MAX_COST
 
-    base_margin = 0.15
-    extra = len(unknown_features) * 0.07
-    margin_pct = min(base_margin + extra, 0.40)
-    error_margin = round(predicted * margin_pct)
+    error_margin = _compute_error_margin(predicted, unknown_features)
+    margin_pct = round(error_margin / predicted * 100, 1) if predicted > 0 else 0
+
+    est_confidence = compute_estimate_confidence(scale_source, unknown_features, decision)
+
+    elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
+    logger.info(
+        "predict_cost: rid=%s model=%s cost=%d severity=%s decision=%s "
+        "scale=%s unknowns=%s confidence=%.2f margin=%d(%.1f%%) elapsed=%.1fms",
+        request_id, model_version, round(predicted), severity, decision,
+        scale_source, unknown_features, est_confidence,
+        error_margin, margin_pct, elapsed_ms,
+    )
+
+    # Structured log for replay, drift monitoring, and threshold analysis
+    from app.inference_logger import log_cost_prediction  # noqa: PLC0415
+    log_cost_prediction(
+        request_id=request_id,
+        model_version=model_version,
+        class_name=class_name,
+        panel=raw_panel,
+        severity=severity,
+        decision=decision,
+        cost=round(predicted),
+        cost_low=round(max(0, predicted - error_margin)),
+        cost_high=round(predicted + error_margin),
+        area_cm2=area_cm2,
+        scale_source=scale_source,
+        unknown_features=unknown_features,
+        estimate_confidence=est_confidence,
+        elapsed_ms=elapsed_ms,
+        input_payload=payload,
+    )
+    from app.metrics import record_cost  # noqa: PLC0415
+    record_cost(
+        model_version=model_version,
+        severity=severity,
+        cost=round(predicted),
+        cost_low=round(max(0, predicted - error_margin)),
+        cost_high=round(predicted + error_margin),
+        scale_source=scale_source,
+        unknown_features=unknown_features,
+        elapsed_ms=elapsed_ms,
+    )
+
+    # Build human-readable confidence explanation
+    confidence_reasons: list[str] = []
+    if scale_source == "fallback_estimate":
+        confidence_reasons.append("panel not fully visible (size is approximate)")
+    if unknown_features:
+        confidence_reasons.append(
+            f"unknown {', '.join(f.replace('vehicle', '').replace('panel', 'panel ').lower().strip() for f in unknown_features)}"
+        )
+    if decision == "unknown":
+        confidence_reasons.append("repair method uncertain")
+    confidence_detail = (
+        f"{int(est_confidence * 100)}% confidence"
+        + (f": {'; '.join(confidence_reasons)}" if confidence_reasons else "")
+    )
 
     return {
         "cost": round(predicted),
@@ -353,9 +574,13 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
         "costHigh": round(predicted + error_margin),
         "currency": "PKR",
         "severity": severity,
+        "severityDetail": severity_detail,
         "decision": decision,
         "unknownFeatures": unknown_features,
-        "modelVersion": COST_MODEL_VERSION,
+        "estimateConfidence": est_confidence,
+        "confidenceDetail": confidence_detail,
+        "modelVersion": model_version,
+        "requestId": request_id,
         "breakdown": {
             "repairMethod": repair_meth,
             "laborHours": labor_hrs,
@@ -365,5 +590,9 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
             "material": material,
             "severityScore": severity,
             "scaleSource": scale_source,
+            "errorMargin": error_margin,
+            "errorMarginPct": margin_pct,
+            "depthMm": depth_mm,
+            "depthSource": depth_source,
         },
     }

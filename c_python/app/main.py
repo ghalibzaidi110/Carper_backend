@@ -5,15 +5,19 @@ Nest backend calls POST /detect with { "image_url": "<url>" } and expects
 """
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from app.config import settings
 from app.detection import run_detection
-from app.engine import run_yolo_on_bytes
+from app.engine import close_http_client, run_yolo_on_bytes
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -36,26 +40,43 @@ async def lifespan(app: FastAPI):
         logger.info("No MODEL_PATH set; using stub detection")
 
     if settings.cost_model_path:
-        logger.info("Loading cost model from %s", settings.cost_model_path)
+        logger.info("Loading cost model A from %s", settings.cost_model_path)
         try:
             from app.cost import _load_cost_model
             await asyncio.to_thread(_load_cost_model)
         except Exception as e:
-            logger.error("Failed to load cost model: %s", e)
+            logger.error("Failed to load cost model A: %s", e)
             # Don't raise — cost endpoint will surface the error if hit
     else:
         logger.info("No COST_MODEL_PATH set; /cost-estimate will fail until configured")
 
-    yield
-    # shutdown: cleanup if needed
-    pass
+    if settings.cost_model_b_path:
+        logger.info("Loading cost model B from %s (weight=%.2f)", settings.cost_model_b_path, settings.cost_model_b_weight)
+        try:
+            from app.cost import _load_cost_model_b
+            await asyncio.to_thread(_load_cost_model_b)
+        except Exception as e:
+            logger.error("Failed to load cost model B: %s — A/B disabled", e)
 
+    # Purge stale inference logs on startup
+    from app.inference_logger import purge_old_logs
+    purge_old_logs()
+
+    yield
+
+    # Cleanup on shutdown
+    await close_http_client()
+
+
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="Damage Detection Service",
     description="YOLOv8-based damage detection; called by Nest backend.",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # F-6: Lock CORS to only the NestJS backend (and dev fallbacks). The
 # Python service is server-to-server only — the browser never calls it
@@ -63,7 +84,6 @@ app = FastAPI(
 # DoS vector if the Python box was ever exposed publicly. Override the
 # allowed origins via the ALLOWED_ORIGINS env var (comma-separated)
 # in production.
-import os  # noqa: E402 — local import keeps top minimal
 _default_origins = [
     "http://localhost:3000",  # NestJS dev
     "http://127.0.0.1:3000",
@@ -89,11 +109,16 @@ class DetectRequest(BaseModel):
     image_url: HttpUrl | str
 
 
-class Bbox(BaseModel):
-    x1: float
-    y1: float
-    x2: float
-    y2: float
+class DetectBatchRequest(BaseModel):
+    image_urls: list[HttpUrl | str]
+    # Max 10 images per batch to prevent abuse
+    model_config = {"json_schema_extra": {"examples": [{"image_urls": ["https://example.com/img1.jpg"]}]}}
+
+
+class DetectBatchItem(BaseModel):
+    image_url: str
+    result: "DetectResponse | None" = None
+    error: str | None = None
 
 
 class DetectionItem(BaseModel):
@@ -126,6 +151,15 @@ class CostEstimateRequest(BaseModel):
     areaCm2: float | None = None
     perimCm: float | None = None
     severity: str | None = None
+    multipleDentsCount: int = 1
+    partsCost: float | None = None
+    requestId: str | None = None  # Optional; seeds A/B selection for reproducibility
+    # Depth/measurement tier fields
+    scaleSource: str | None = None       # webxr_depth|depth_model|panel_reference|fallback_estimate
+    depthMm: float | None = None         # Absolute dent depth in mm (WebXR only)
+    depthSource: str | None = None       # webxr|depth_model|heuristic
+    depthCategory: str | None = None     # shallow|moderate|deep (from depth model)
+    relativeDepthDelta: float | None = None  # Raw relative depth delta from monocular model
 
 
 class CostEstimateBreakdown(BaseModel):
@@ -141,6 +175,10 @@ class CostEstimateBreakdown(BaseModel):
     #   "fallback_estimate" — legacy fixed-distance assumption (less accurate)
     #   "client_provided"  — frontend computed it (we trust them)
     scaleSource: str = "fallback_estimate"
+    errorMargin: int | None = None
+    errorMarginPct: float | None = None
+    depthMm: float | None = None       # Dent depth in mm (when available)
+    depthSource: str | None = None     # webxr|depth_model|heuristic
 
 
 class CostEstimateResponse(BaseModel):
@@ -149,13 +187,19 @@ class CostEstimateResponse(BaseModel):
     costHigh: int
     currency: str
     severity: str
+    severityDetail: str | None = None  # e.g. "Moderate (3.2% of hood area)"
     decision: str
     unknownFeatures: list[str]
+    # 0–1 confidence in this estimate. Driven by scale source quality,
+    # number of unknown features, and repair decision certainty.
+    estimateConfidence: float = 1.0
+    confidenceDetail: str | None = None  # Human-readable explanation of confidence score
     breakdown: CostEstimateBreakdown
     # Identifies which trained model produced this prediction. Persisted
     # downstream so a future audit can replay the same input against the
     # same model version (or a different one for A/B testing).
-    modelVersion: str = "v1"
+    modelVersion: str = "v4"
+    requestId: str | None = None  # Echoed back (or auto-generated) for replay/audit
 
 
 @app.get("/health")
@@ -163,8 +207,17 @@ async def health():
     return {"status": "ok", "service": "damage-detection"}
 
 
+@app.get("/metrics")
+async def metrics():
+    """Prometheus-compatible metrics endpoint."""
+    from app.metrics import get_metrics_response  # noqa: PLC0415
+    body, content_type = get_metrics_response()
+    return Response(content=body, media_type=content_type)
+
+
 @app.post("/detect", response_model=DetectResponse)
-async def detect(body: DetectRequest):
+@limiter.limit("20/minute")
+async def detect(request: Request, body: DetectRequest):
     url = str(body.image_url)
     try:
         result = await run_detection(url)
@@ -187,7 +240,8 @@ async def detect(body: DetectRequest):
 
 
 @app.post("/detect-upload", response_model=DetectResponse)
-async def detect_upload(file: UploadFile = File(...)):
+@limiter.limit("20/minute")
+async def detect_upload(request: Request, file: UploadFile = File(...)):
     """
     Run YOLO inference directly on uploaded image bytes — no URL download.
     Useful when the caller doesn't have the image hosted (e.g. Cloudinary
@@ -220,15 +274,60 @@ async def detect_upload(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+MAX_BATCH_SIZE = 10
+
+
+@app.post("/detect-batch")
+@limiter.limit("5/minute")
+async def detect_batch(request: Request, body: DetectBatchRequest):
+    """
+    Run YOLO inference on multiple images. Max 10 per request.
+    Returns per-image results; individual failures don't fail the batch.
+    """
+    urls = body.image_urls[:MAX_BATCH_SIZE]
+    if len(body.image_urls) > MAX_BATCH_SIZE:
+        logger.warning(
+            "Batch request trimmed: %d → %d images",
+            len(body.image_urls), MAX_BATCH_SIZE,
+        )
+
+    async def _detect_one(url: str) -> DetectBatchItem:
+        try:
+            result = await run_detection(str(url))
+            return DetectBatchItem(
+                image_url=str(url),
+                result=DetectResponse(
+                    has_damage=result["has_damage"],
+                    confidence=result["confidence"],
+                    detections=[
+                        DetectionItem(
+                            label=d["label"],
+                            confidence=d["confidence"],
+                            bbox=d["bbox"],
+                        )
+                        for d in result["detections"]
+                    ],
+                    processed_image_url=result.get("processed_image_url"),
+                ),
+            )
+        except Exception as e:
+            logger.warning("Batch detection failed for %s: %s", url, e)
+            return DetectBatchItem(image_url=str(url), error=str(e))
+
+    results = await asyncio.gather(*[_detect_one(str(u)) for u in urls])
+    return {"results": [r.model_dump() for r in results]}
+
+
 @app.post("/cost-estimate", response_model=CostEstimateResponse)
-async def cost_estimate(body: CostEstimateRequest):
+@limiter.limit("60/minute")
+async def cost_estimate(request: Request, body: CostEstimateRequest):
     """
     Predict repair cost in PKR for a single damage entry. Used by the
     Carper live-detection page (proxied through NestJS).
     """
     try:
         from app.cost import predict_cost
-        result = await asyncio.to_thread(predict_cost, body.dict())
+        result = await asyncio.to_thread(predict_cost, body.model_dump())
         return CostEstimateResponse(**result)
     except FileNotFoundError as e:
         logger.warning("Cost model missing: %s", e)
@@ -243,9 +342,13 @@ async def cost_health():
     from app import cost as cost_module
     return {
         "status": "ok",
-        "model_loaded": cost_module._model is not None,
-        "model_version": cost_module.COST_MODEL_VERSION,
-        "configured_path": settings.cost_model_path,
+        "model_a_loaded": cost_module._model is not None,
+        "model_a_version": cost_module.COST_MODEL_VERSION,
+        "model_b_loaded": cost_module._model_b is not None,
+        "model_b_version": cost_module.COST_MODEL_B_VERSION if cost_module._model_b else None,
+        "model_b_weight": settings.cost_model_b_weight,
+        "configured_path_a": settings.cost_model_path,
+        "configured_path_b": settings.cost_model_b_path,
     }
 
 
