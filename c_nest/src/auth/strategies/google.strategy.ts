@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, VerifyCallback } from 'passport-google-oauth20';
+import { Strategy } from 'passport-google-oauth20';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -28,21 +28,26 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     }
   }
 
+  // NestJS Passport's mixin wraps this method and calls Passport's `done`
+  // with whatever we return. Returning the user is the right pattern;
+  // calling `done()` AND returning undefined results in a double-callback
+  // where the second call has user=undefined and Passport silently fails.
   async validate(
-    accessToken: string,
-    refreshToken: string,
+    _accessToken: string,
+    _refreshToken: string,
     profile: any,
-    done: VerifyCallback,
   ): Promise<any> {
     const { id, name, emails, photos } = profile;
 
-    const user = {
+    if (!emails?.[0]?.value) {
+      throw new Error('Google account did not return an email address.');
+    }
+
+    return {
       googleId: id,
       email: emails[0].value,
-      fullName: `${name.givenName} ${name.familyName}`,
+      fullName: `${name?.givenName ?? ''} ${name?.familyName ?? ''}`.trim() || emails[0].value,
       avatarUrl: photos?.[0]?.value || null,
     };
-
-    done(null, user);
   }
 }
