@@ -10,10 +10,14 @@ import { firstValueFrom } from 'rxjs';
 import { CostEstimateDto, VendorSearchDto, VehicleDto } from './dto';
 import { PANEL_QUERY_MAP, SEARCH_CONFIG, SearchConfig } from './constants/search-config';
 
+// Approximate USD → PKR rate. Updated periodically; good enough for
+// ballpark part-price estimates. Override via USD_TO_PKR env var.
+const USD_TO_PKR = parseFloat(process.env.USD_TO_PKR || '278');
+
 export interface Vendor {
   name: string;
   price: number;
-  currency: 'PKR' | 'USD';
+  currency: 'PKR';
   url: string;
   rating: number;
   reviews: number;
@@ -145,20 +149,28 @@ export class LiveDetectionService {
       const results: any[] = data?.shopping_results || [];
       const vendors: Vendor[] = results
         .filter((r) => r.extracted_price && r.extracted_price > 0)
-        .map((r): Vendor => ({
-          name: r.source || 'Unknown',
-          price: r.extracted_price,
-          currency: typeof r.price === 'string' && r.price.startsWith('Rs') ? 'PKR' : 'USD',
-          url: r.product_link || r.link || '',
-          rating: r.rating || 0,
-          reviews: r.reviews || 0,
-          inStock: !r.extensions?.some((e: string) => /out of stock/i.test(e)),
-          partName: r.title?.substring(0, 80) || config.partName,
-          deliveryDays: this.extractDelivery(r),
-          thumbnail: r.thumbnail || null,
-          oldPrice: r.extracted_old_price || null,
-          badge: r.tag || r.badge || null,
-        }))
+        .map((r): Vendor => {
+          const isAlreadyPKR = typeof r.price === 'string' && r.price.startsWith('Rs');
+          const rawPrice: number = r.extracted_price;
+          const price = isAlreadyPKR ? rawPrice : Math.round(rawPrice * USD_TO_PKR);
+          const oldPrice = r.extracted_old_price
+            ? (isAlreadyPKR ? r.extracted_old_price : Math.round(r.extracted_old_price * USD_TO_PKR))
+            : null;
+          return {
+            name: r.source || 'Unknown',
+            price,
+            currency: 'PKR',
+            url: r.product_link || r.link || '',
+            rating: r.rating || 0,
+            reviews: r.reviews || 0,
+            inStock: !r.extensions?.some((e: string) => /out of stock/i.test(e)),
+            partName: r.title?.substring(0, 80) || config.partName,
+            deliveryDays: this.extractDelivery(r),
+            thumbnail: r.thumbnail || null,
+            oldPrice,
+            badge: r.tag || r.badge || null,
+          };
+        })
         .sort((a, b) => a.price - b.price)
         .slice(0, 5);
 

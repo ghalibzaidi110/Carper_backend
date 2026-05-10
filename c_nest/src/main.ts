@@ -23,8 +23,11 @@ async function bootstrap() {
   app.use(helmet.default());
 
   // ─── CORS ───────────────────────────────────────────────────
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+  const extraOrigins = process.env.EXTRA_CORS_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? [];
+  const origins = [frontendUrl, ...extraOrigins];
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    origin: origins.length === 1 ? origins[0] : origins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

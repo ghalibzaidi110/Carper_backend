@@ -229,41 +229,114 @@ KNOWN_PANELS = {
 }
 
 
-def derive_severity_from_panel_ratio(panel_ratio: float) -> str:
+def _area_severity(ratio: float) -> int:
+    """Map an area ratio to a 0–3 severity score."""
+    if ratio < 0.01:
+        return 0  # minor
+    if ratio < 0.05:
+        return 1  # moderate
+    if ratio < 0.15:
+        return 2  # significant
+    return 3      # severe
+
+
+def _depth_severity(
+    depth_mm: float | None,
+    depth_source: str | None,
+    depth_category: str | None,
+) -> int | None:
+    """Map depth info to a 0–3 severity score, or None if unavailable.
+
+    Tier 1 — WebXR absolute depth (mm):
+      ≤2mm shallow → 0, ≤5mm moderate → 1, ≤10mm significant → 2, >10mm → 3
+
+    Tier 2 — Depth-Anything category (shallow/moderate/deep):
+      shallow → 0, moderate → 1, deep → 2
+      (Capped at 2 because monocular depth is relative, not absolute.)
     """
-    Severity from damage-as-fraction-of-panel — used when we have real
-    measurements via panel-as-ruler. A "10% of hood" dent feels intuitively
-    severe; a "0.5% of hood" dent feels minor. These thresholds match
-    body-shop heuristics.
+    if depth_mm is not None and depth_source == "webxr":
+        if depth_mm <= 2.0:
+            return 0
+        if depth_mm <= 5.0:
+            return 1
+        if depth_mm <= 10.0:
+            return 2
+        return 3
+    if depth_category:
+        if depth_category == "shallow":
+            return 0
+        if depth_category == "moderate":
+            return 1
+        return 2  # deep — capped; monocular depth can't distinguish significant/severe
+    return None
+
+
+_SEVERITY_LABELS = ("minor", "moderate", "significant", "severe")
+
+
+def derive_severity_combined(
+    area_ratio: float,
+    depth_mm: float | None,
+    depth_source: str | None,
+    depth_category: str | None,
+) -> tuple[str, str]:
+    """Derive severity from BOTH damage size and depth.
+
+    When depth info is available the final score is a weighted average
+    of area-based and depth-based severity:
+      - With WebXR (absolute mm): 50/50 weight — both signals are reliable
+      - With Depth-Anything (relative): 60/40 area/depth — area is more
+        trustworthy than monocular relative depth
+
+    Returns (severity_label, detail_string).
     """
-    if panel_ratio < 0.01:   # < 1% of panel
-        return "minor"
-    if panel_ratio < 0.05:   # 1–5%
-        return "moderate"
-    if panel_ratio < 0.15:   # 5–15%
-        return "significant"
-    return "severe"          # >= 15%
+    area_score = _area_severity(area_ratio)
+    depth_score = _depth_severity(depth_mm, depth_source, depth_category)
+
+    if depth_score is not None:
+        if depth_source == "webxr":
+            combined = round(area_score * 0.5 + depth_score * 0.5)
+        else:
+            combined = round(area_score * 0.6 + depth_score * 0.4)
+        combined = max(0, min(3, combined))
+        severity = _SEVERITY_LABELS[combined]
+
+        depth_label = (
+            f"{depth_mm:.1f}mm" if depth_mm is not None and depth_source == "webxr"
+            else depth_category or "unknown"
+        )
+        detail = (
+            f"{severity.capitalize()} "
+            f"(area={_SEVERITY_LABELS[area_score]}, "
+            f"depth={depth_label} via {depth_source or 'model'})"
+        )
+    else:
+        severity = _SEVERITY_LABELS[area_score]
+        detail = f"{severity.capitalize()} (area only, no depth data)"
+
+    return severity, detail
 
 
-def derive_severity(area_ratio: float, _confidence: float) -> str:
-    """Severity is driven by damage SIZE only, not by detection confidence.
+def derive_severity_from_panel_ratio(
+    panel_ratio: float,
+    depth_mm: float | None = None,
+    depth_source: str | None = None,
+    depth_category: str | None = None,
+) -> tuple[str, str]:
+    """Severity from panel ratio + depth. Falls back to area-only when
+    no depth data is available."""
+    return derive_severity_combined(panel_ratio, depth_mm, depth_source, depth_category)
 
-    The previous formula combined area_ratio and confidence into a single
-    score, which meant a high-confidence detection of a tiny region would
-    be classified as 'severe' — flipping the repair/replace decision and
-    inflating the cost estimate. Confidence is already used at the YOLO
-    step to filter weak detections; it shouldn't drive severity again here.
 
-    Buckets are set so a small dent on a hood (~3% of frame) is moderate,
-    not severe. Tune these against real labelled data when available.
-    """
-    if area_ratio < 0.01:
-        return "minor"
-    if area_ratio < 0.04:
-        return "moderate"
-    if area_ratio < 0.10:
-        return "significant"
-    return "severe"
+def derive_severity(
+    area_ratio: float,
+    _confidence: float,
+    depth_mm: float | None = None,
+    depth_source: str | None = None,
+    depth_category: str | None = None,
+) -> tuple[str, str]:
+    """Severity from frame-area ratio + depth."""
+    return derive_severity_combined(area_ratio, depth_mm, depth_source, depth_category)
 
 
 def compute_estimate_confidence(
@@ -432,24 +505,32 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
         perim_cm = round(2 * (width_cm + height_cm), 2)
         scale_source = "fallback_estimate"
 
+    # Extract depth info early — needed for severity derivation
+    depth_mm = payload.get("depthMm")
+    depth_source = payload.get("depthSource", "heuristic")
+    depth_category = payload.get("depthCategory")
+    # Normalise depth_source when depth model category is present
+    if depth_category and depth_source == "heuristic":
+        depth_source = "depth_model"
+
     severity_detail: str
     if payload.get("severity") in ("minor", "moderate", "significant", "severe"):
         severity = payload["severity"]
         severity_detail = f"{severity.capitalize()} (client-provided)"
     elif scale_source == "panel_reference" and panel_real_cm is not None:
-        # Use damage-as-fraction-of-panel when we have real measurements.
-        # This is invariant to camera distance and matches what a body-shop
-        # estimator would intuitively use ("a 10% hood dent is a serious dent").
         panel_total_cm2 = panel_real_cm[0] * panel_real_cm[1]
         panel_ratio = area_cm2 / panel_total_cm2 if panel_total_cm2 > 0 else 0
-        severity = derive_severity_from_panel_ratio(panel_ratio)
+        severity, severity_detail = derive_severity_from_panel_ratio(
+            panel_ratio, depth_mm, depth_source, depth_category,
+        )
         pct_str = f"{panel_ratio * 100:.1f}%"
         panel_name = raw_panel.replace("_", " ")
-        severity_detail = f"{severity.capitalize()} ({pct_str} of {panel_name} area)"
+        # Enrich detail with panel context
+        severity_detail = f"{severity_detail} — {pct_str} of {panel_name}"
     else:
-        severity = derive_severity(area_ratio, confidence)
-        pct_str = f"{area_ratio * 100:.1f}%"
-        severity_detail = f"{severity.capitalize()} ({pct_str} of frame, approximate)"
+        severity, severity_detail = derive_severity(
+            area_ratio, confidence, depth_mm, depth_source, depth_category,
+        )
 
     dent_type = DENT_TYPE_MAP.get(class_name, "dent")
     material = PANEL_MATERIAL_MAP.get(raw_panel, "Steel")
@@ -459,21 +540,15 @@ def predict_cost(payload: dict[str, Any]) -> dict[str, Any]:
     if decision == "replace":
         repair_meth = "Panel_Replacement"
     elif decision == "repair" and repair_meth == "Panel_Replacement":
-        # Don't use Panel_Replacement for repairable damage (e.g. minor tire_flat)
         repair_meth = "PDR"
 
     paint_dam = "yes" if dent_type in ("scratch", "crack") else "no"
 
-    # Dent depth: use actual measurement when available, else heuristic
-    depth_mm = payload.get("depthMm")
-    depth_source = payload.get("depthSource", "heuristic")
+    # Dent depth for model feature: use actual measurement when available
     if depth_mm is not None and depth_source == "webxr":
         dent_depth = "deep" if depth_mm > 5.0 else "shallow"
-    elif payload.get("depthCategory"):
-        depth_cat = payload["depthCategory"]
-        dent_depth = "deep" if depth_cat == "deep" else "shallow"
-        if depth_source == "heuristic":
-            depth_source = "depth_model"
+    elif depth_category:
+        dent_depth = "deep" if depth_category == "deep" else "shallow"
     else:
         dent_depth = "deep" if severity in ("significant", "severe") else "shallow"
 
