@@ -1,0 +1,112 @@
+{
+  "version": "v4",
+  "dataset_rows": 3000,
+  "train_rows": 2400,
+  "test_rows": 600,
+  "target": "Total_Repair_Cost",
+  "features": [
+    "Vehicle_Model",
+    "Panel_Location",
+    "Panel_Material",
+    "Dent_Type",
+    "Dent_Area_Cm_Squared",
+    "Dent_Perimeter_Centimetres",
+    "Dent_Depth",
+    "Multiple_Dents_Count",
+    "Repair_Method",
+    "Labor_Hours",
+    "Paint_Materials_Cost",
+    "Parts_Cost",
+    "Repair_Time_Days"
+  ],
+  "dropped_features": [
+    "Record_ID",
+    "On_Body_Line",
+    "Vehicle_Year",
+    "Vehicle_Make",
+    "Damage_Severity_Score",
+    "Paint_Damaged",
+    "Metal_Stretched"
+  ],
+  "pruned_by_importance": [
+    "Vehicle_Year",
+    "Vehicle_Make",
+    "Damage_Severity_Score",
+    "Paint_Damaged",
+    "Metal_Stretched"
+  ],
+  "categorical_features": [
+    "Vehicle_Model",
+    "Panel_Location",
+    "Panel_Material",
+    "Dent_Type",
+    "Dent_Depth",
+    "Repair_Method"
+  ],
+  "numerical_features": [
+    "Dent_Area_Cm_Squared",
+    "Dent_Perimeter_Centimetres",
+    "Multiple_Dents_Count",
+    "Labor_Hours",
+    "Paint_Materials_Cost",
+    "Parts_Cost",
+    "Repair_Time_Days"
+  ],
+  "feature_importances": {
+    "Damage_Severity_Score": 7.599028053767809e-05,
+    "Dent_Area_Cm_Squared": 0.0013430573823805623,
+    "Dent_Depth": 0.020305272297726835,
+    "Dent_Perimeter_Centimetres": 0.0009663053807829666,
+    "Dent_Type": 0.004238277216801872,
+    "Labor_Hours": 0.14373666093004767,
+    "Metal_Stretched": 2.8068381845724223e-07,
+    "Multiple_Dents_Count": 0.0009043550044605497,
+    "Paint_Damaged": 6.992433813641477e-05,
+    "Paint_Materials_Cost": 0.026742465234566175,
+    "Panel_Location": 0.005905652236848911,
+    "Panel_Material": 0.01929199942065393,
+    "Parts_Cost": 0.7552413563104006,
+    "Repair_Method": 0.0019461560276428588,
+    "Repair_Time_Days": 0.017958917884073722,
+    "Vehicle_Make": 0.00027153520954683837,
+    "Vehicle_Model": 0.0006268613672801151,
+    "Vehicle_Year": 0.00037493279429364975
+  },
+  "importance_threshold": 0.0005,
+  "benchmark": [
+    {
+      "model": "LinearRegression",
+      "mae_pkr": 4139.657917029872,
+      "rmse_pkr": 5576.886129711613,
+      "r2": 0.9640789384120012
+    },
+    {
+      "model": "RandomForest",
+      "mae_pkr": 4087.652516666667,
+      "rmse_pkr": 5880.889687384788,
+      "r2": 0.9600559887758576
+    },
+    {
+      "model": "ExtraTrees",
+      "mae_pkr": 3777.5955249999997,
+      "rmse_pkr": 5015.813183975593,
+      "r2": 0.9709431645316324
+    },
+    {
+      "model": "GradientBoosting",
+      "mae_pkr": 3562.670545321221,
+      "rmse_pkr": 4893.60638672533,
+      "r2": 0.9723418149786109
+    }
+  ],
+  "selected_model": "GradientBoosting",
+  "test_mae_pkr": 2789.4723468934894,
+  "test_rmse_pkr": 3563.51108573702,
+  "test_r2": 0.9853336570085169,
+  "cv_r2_mean": 0.9734457308808055,
+  "cv_r2_std": 0.0030357543414091465,
+  "cv_mae_mean_pkr": 3704.959330848392,
+  "cv_rmse_mean_pkr": 5073.010458624848,
+  "holdout_path": "car_damage_cost_holdout_v4.joblib",
+  "model_path": "car_damage_cost_regression_pipeline_v4.joblib"
+}

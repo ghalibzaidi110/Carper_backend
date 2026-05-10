@@ -1,0 +1,55 @@
+main.py - FastAPI Application & Endpoints
+============================================
+
+PURPOSE:
+FastAPI service that exposes HTTP endpoints for damage detection and cost estimation.
+Called by the NestJS backend (server-to-server), not directly by the browser.
+
+WHAT IT DOES:
+
+1. Startup (lifespan):
+   - Loads YOLO model if MODEL_PATH is set (fails hard if model file missing).
+   - Loads cost model A if COST_MODEL_PATH is set (warns but continues if missing).
+   - Loads cost model B if COST_MODEL_B_PATH is set (for A/B testing).
+   - Purges stale inference logs.
+   - On shutdown: closes the shared httpx client.
+
+2. Endpoints:
+
+   POST /detect (20/min rate limit):
+   - Input: {"image_url": "https://..."}
+   - Downloads image, runs YOLO inference, returns detections + annotated image.
+   - Output: {has_damage, confidence, detections[], processed_image_url}
+
+   POST /detect-upload (20/min rate limit):
+   - Input: multipart file upload (image).
+   - Runs YOLO directly on uploaded bytes (no URL download needed).
+   - Same output format as /detect.
+
+   POST /detect-batch (5/min rate limit):
+   - Input: {"image_urls": ["url1", "url2", ...]}
+   - Max 10 images per batch. Individual failures don't fail the batch.
+   - Runs all detections concurrently via asyncio.gather.
+
+   POST /cost-estimate (60/min rate limit):
+   - Input: {className, panelLocation, confidence, bbox, vehicleMake, vehicleModel, ...}
+   - Predicts repair cost using the v4 GradientBoosting pipeline.
+   - Output: {cost, costLow, costHigh, severity, decision, breakdown, ...}
+
+   GET /health:
+   - Returns {"status": "ok"}.
+
+   GET /metrics:
+   - Prometheus-compatible metrics output.
+
+   GET /cost/health:
+   - Reports cost model loading status, versions, A/B config.
+
+   GET /cost/known-vehicles:
+   - Returns canonical lists of makes, models, panels the cost model knows.
+   - Frontend should be a subset; drift means silently inaccurate estimates.
+
+3. Security:
+   - CORS locked to NestJS backend origins (localhost:3000 by default).
+   - Override via ALLOWED_ORIGINS env var in production.
+   - Rate limiting via slowapi per remote IP address.

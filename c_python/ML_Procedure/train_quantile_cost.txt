@@ -1,0 +1,47 @@
+train_quantile_cost.py - Quantile Regression Cost Model
+=========================================================
+
+PURPOSE:
+Trains three GradientBoostingRegressors at different quantiles to produce
+honest prediction intervals instead of point estimates with heuristic margins.
+
+WHAT IT DOES:
+
+1. Three Quantile Models:
+   - q10 (alpha=0.10) -> costLow (10th percentile)
+   - q50 (alpha=0.50) -> cost (median, more robust than mean)
+   - q90 (alpha=0.90) -> costHigh (90th percentile)
+   - Together they form an 80% prediction interval.
+
+2. Same Feature Set as v4:
+   - 6 categorical: Vehicle_Model, Panel_Location, Panel_Material, Dent_Type,
+     Dent_Depth, Repair_Method.
+   - 7 numerical: Dent_Area_Cm_Squared, Dent_Perimeter_Centimetres,
+     Multiple_Dents_Count, Labor_Hours, Paint_Materials_Cost, Parts_Cost,
+     Repair_Time_Days.
+   - Drops same low-importance features as v4.
+
+3. Preprocessing Pipeline:
+   - OneHotEncoder for categorical features (handles unknown categories).
+   - StandardScaler for numerical features.
+   - 500 estimators, max_depth=5, learning_rate=0.05, subsample=0.8.
+
+4. Evaluation Metrics:
+   - Coverage: fraction of true values within [q10, q90] interval.
+   - Average and median interval width.
+   - Median model MAE, RMSE, R2.
+   - Pinball loss for each quantile (proper scoring rule).
+
+5. Outputs:
+   - car_damage_cost_quantile_low_v5q.joblib
+   - car_damage_cost_quantile_mid_v5q.joblib
+   - car_damage_cost_quantile_high_v5q.joblib
+   - car_damage_cost_quantile_metrics_v5q.json
+
+NOTE: This script is superseded by train_cost_v5.py, which includes quantile
+regression plus a decision classifier and labor regressor. This standalone
+version is simpler but less complete.
+
+USAGE:
+  python train_quantile_cost.py --data car_damage_cost_data.csv
+  python train_quantile_cost.py --data car_damage_cost_data.csv --alphas 0.05 0.50 0.95

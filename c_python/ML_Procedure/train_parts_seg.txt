@@ -1,0 +1,46 @@
+train_parts_seg.py - Parts Segmentation Model Training (v2)
+==============================================================
+
+PURPOSE:
+Trains a YOLOv8-seg model to segment car body panels (hood, doors, bumpers, etc.).
+The parts model enables panel-as-ruler scaling in cost estimation.
+
+WHAT IT DOES:
+
+1. Label Remapping (--prepare):
+   - v1 model had 23 classes including "object" (catch-all) at index 18.
+   - v2 drops "object" and shifts class IDs 19-22 down by 1 -> 22 classes.
+   - Operates in-place on YOLO-format label .txt files.
+   - Creates backups in labels_v1_backup/ before modifying.
+
+2. Training (--train):
+   - Starts from pretrained yolov8n-seg.pt (nano, fastest variant).
+   - Trains on Carparts Segmentation Dataset with tuned augmentation:
+     - Mosaic=0.7 (panels need spatial context).
+     - HSV shifts for paint color variation.
+     - Horizontal flip (left/right doors swap, fine for segmentation).
+     - No vertical flip (cars aren't upside down).
+   - Mixed precision (AMP) for speed.
+   - Early stopping with patience=15 epochs.
+   - Default: 100 epochs, imgsz=640, batch=16.
+
+3. ONNX Export (--export):
+   - Exports best.pt to ONNX format with NMS baked into the graph.
+   - Output shape: [1, 300, 38] = bbox(4) + conf(1) + cls(1) + mask_coefs(32).
+   - Matches frontend part-segmenter.ts expectations.
+   - Uses opset 17 with graph simplification.
+
+4. PR Curve Analysis (--analyze):
+   - Runs validation at very low confidence (0.001) to get full PR curves.
+   - Prints per-class AP50 scores.
+   - Generates PR curve plots for threshold tuning.
+   - Used to determine optimal CONF_THRESHOLD for frontend.
+
+22 CLASSES (v2):
+back_bumper, back_door, back_glass, back_left_door, back_left_light,
+back_light, back_right_door, back_right_light, front_bumper, front_door,
+front_glass, front_left_door, front_left_light, front_light, front_right_door,
+front_right_light, hood, left_mirror, right_mirror, tailgate, trunk, wheel.
+
+USAGE:
+  python train_parts_seg.py --prepare --train --export --dataset-dir ../datasets/carparts-seg

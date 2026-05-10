@@ -169,4 +169,68 @@ export class CostEstimateDto {
   @IsOptional()
   @IsIn(['minor', 'moderate', 'significant', 'severe'])
   severity?: 'minor' | 'moderate' | 'significant' | 'severe';
+
+  @ApiPropertyOptional({ example: 1, minimum: 1, maximum: 50, description: 'Number of dents on same panel' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  multipleDentsCount?: number;
+
+  @ApiPropertyOptional({ example: 5000, minimum: 0, description: 'Replacement parts cost (PKR) from vendor search' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10_000_000)
+  partsCost?: number;
+
+  // ── Depth/measurement tier fields ──────────────────────────────────
+
+  @ApiPropertyOptional({
+    enum: ['webxr_depth', 'depth_model', 'panel_reference', 'fallback_estimate'],
+    description:
+      'Which measurement tier produced areaCm2/perimCm. ' +
+      'webxr_depth = absolute AR sensor, depth_model = monocular AI, ' +
+      'panel_reference/fallback_estimate = existing backend computation.',
+  })
+  @IsOptional()
+  @IsIn(['webxr_depth', 'depth_model', 'panel_reference', 'fallback_estimate'])
+  scaleSource?: 'webxr_depth' | 'depth_model' | 'panel_reference' | 'fallback_estimate';
+
+  @ApiPropertyOptional({
+    example: 3.2,
+    minimum: 0,
+    maximum: 500,
+    description: 'Absolute dent depth in millimetres (WebXR sensor only)',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(500)
+  depthMm?: number;
+
+  @ApiPropertyOptional({
+    enum: ['webxr', 'depth_model', 'heuristic'],
+    description: 'Source of the dent depth measurement',
+  })
+  @IsOptional()
+  @IsIn(['webxr', 'depth_model', 'heuristic'])
+  depthSource?: 'webxr' | 'depth_model' | 'heuristic';
+
+  @ApiPropertyOptional({
+    enum: ['shallow', 'moderate', 'deep'],
+    description: 'Dent depth classification from monocular depth model',
+  })
+  @IsOptional()
+  @IsIn(['shallow', 'moderate', 'deep'])
+  depthCategory?: 'shallow' | 'moderate' | 'deep';
+
+  @ApiPropertyOptional({
+    description:
+      'Raw relative depth delta between damage center and surrounding panel surface ' +
+      '(from monocular depth model). Positive = dent, negative = protrusion.',
+  })
+  @IsOptional()
+  @IsNumber()
+  relativeDepthDelta?: number;
 }

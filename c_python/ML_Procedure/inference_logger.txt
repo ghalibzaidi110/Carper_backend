@@ -1,0 +1,41 @@
+inference_logger.py - Structured Inference Logging
+=====================================================
+
+PURPOSE:
+Writes every YOLO detection and cost prediction as JSON-lines to rotating log files.
+Enables downstream analysis: PR curves, drift monitoring, latency tracking, A/B comparison.
+
+WHAT IT DOES:
+
+1. Log File Management:
+   - Writes to c_python/logs/ directory (configurable via INFERENCE_LOG_DIR env var).
+   - Files rotate daily: detection_YYYY-MM-DD.jsonl, cost_YYYY-MM-DD.jsonl.
+   - Retention: 30 days by default (configurable via INFERENCE_LOG_DAYS).
+   - Old files purged on app startup.
+
+2. Detection Logging (log_detection):
+   - Logs one record per YOLO inference call.
+   - Fields: timestamp, image_source (url/upload), image_hash, image dimensions,
+     number of detections, per-detection label/confidence/bbox, latency, cache_hit flag.
+
+3. Cost Prediction Logging (log_cost_prediction):
+   - Logs one record per cost prediction.
+   - Fields: timestamp, request_id, model_version, class_name, panel, severity,
+     repair/replace decision, cost (with low/high bounds), area_cm2, scale_source,
+     unknown_features, estimate_confidence, latency, full input payload.
+   - Full payload stored for replay against new model versions.
+
+4. Thread Safety:
+   - Uses a threading.Lock to prevent concurrent writes from interleaving JSONL lines.
+   - Logging failures are caught and warned, never break inference.
+
+5. Log Purging (purge_old_logs):
+   - Deletes .jsonl files older than retention period.
+   - Called on startup and can be called manually.
+
+USE CASES:
+- Confidence threshold tuning via PR curve analysis
+- Class distribution drift detection
+- Cost prediction drift monitoring
+- Model A/B comparison
+- Latency profiling

@@ -1,0 +1,72 @@
+cost.py - Cost Estimation Engine
+==================================
+
+PURPOSE:
+Predicts car damage repair cost in PKR using a trained GradientBoosting pipeline (v4).
+Takes damage detection results + vehicle info and outputs cost estimate with confidence bands.
+
+WHAT IT DOES:
+
+1. Model Loading:
+   - Loads a sklearn GradientBoosting pipeline from a .joblib file.
+   - Supports A/B testing: can load a second model (model B) and route a fraction
+     of requests to it using deterministic hashing for reproducibility.
+
+2. Feature Derivation:
+   - Maps YOLO damage classes to model features:
+     - DENT_TYPE_MAP: e.g., glass_shatter -> "crack", lamp_broken -> "dent"
+     - PANEL_MATERIAL_MAP: e.g., front_bumper -> "Plastic", hood -> "Steel"
+     - REPAIR_METHOD_MAP: e.g., dent -> "PDR", scratch -> "Spot_Paint"
+
+3. Severity Calculation (derive_severity / derive_severity_from_panel_ratio):
+   - Driven by damage SIZE only, not detection confidence.
+   - Two modes:
+     a) Frame ratio: damage area / total frame area (fallback, less accurate).
+     b) Panel ratio: damage area / panel area using panel-as-ruler (preferred).
+   - Buckets: minor (<1%), moderate (1-4/5%), significant (4/5-10/15%), severe (>=10/15%).
+
+4. Repair vs Replace Decision (get_repair_decision):
+   - Rule-based decision tree per panel type:
+     - Body panels (doors, hood, bumpers): repair if minor/moderate dent/scratch, replace if severe.
+     - Glass panels: always replace for shatter, repair minor cracks.
+     - Lights: always replace for broken/cracked/shattered.
+     - Mirrors: replace for shatter/broken/crack, repair minor scratches.
+     - Wheels: replace cracks, repair minor tire issues.
+
+5. Area Computation (three sources, best to worst):
+   a) Panel-as-ruler: uses detected panel bbox as known-size reference to convert
+      pixel measurements to real cm2. Invariant to camera distance.
+   b) Client-provided: frontend already computed areaCm2.
+   c) Fallback: fixed-distance assumption (px_per_cm from frame size / 60).
+
+6. Cost Prediction (predict_cost):
+   - Builds a 13-feature DataFrame matching the v4 model's training schema:
+     Vehicle_Model, Panel_Location, Panel_Material, Dent_Type, Dent_Area_Cm_Squared,
+     Dent_Perimeter_Centimetres, Dent_Depth, Multiple_Dents_Count, Repair_Method,
+     Labor_Hours, Paint_Materials_Cost, Parts_Cost, Repair_Time_Days.
+   - Predicts cost, clamps to [0, 10M PKR].
+   - Computes error margin using CV RMSE blended with prediction-scaled component.
+   - Computes estimate confidence (0-1) based on scale source quality, unknown features,
+     and repair decision certainty.
+
+7. Unknown Feature Handling:
+   - Vehicle make/model not in training set -> marked unknown, set to None.
+   - Panel not in known panels -> marked unknown.
+   - Each unknown widens the error margin by 15% and drops confidence by 0.15.
+
+OUTPUT FORMAT:
+{
+    "cost": 15000,
+    "costLow": 10000,
+    "costHigh": 20000,
+    "currency": "PKR",
+    "severity": "moderate",
+    "severityDetail": "Moderate (3.2% of hood area)",
+    "decision": "repair",
+    "unknownFeatures": [],
+    "estimateConfidence": 0.90,
+    "confidenceDetail": "90% confidence",
+    "modelVersion": "v4",
+    "requestId": "abc123",
+    "breakdown": {repairMethod, laborHours, paintCost, areaCm2, ...}
+}

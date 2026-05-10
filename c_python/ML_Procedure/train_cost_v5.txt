@@ -1,0 +1,44 @@
+train_cost_v5.py - V5 Cost Model Training
+=============================================
+
+PURPOSE:
+Trains the next-generation (v5) cost model that improves on v4 by learning
+repair decisions and labor hours from data instead of using hand-coded rules.
+
+WHAT IT DOES:
+
+1. Three Quantile Cost Regressors (replaces v4's single point estimate):
+   - Trains GradientBoostingRegressor at alpha=0.10, 0.50, 0.90.
+   - Produces statistically grounded 80% prediction intervals.
+   - q50 (median) is the primary cost prediction.
+   - q10/q90 give costLow/costHigh without heuristic error margins.
+   - 500 estimators, max_depth=5, learning_rate=0.05, subsample=0.8.
+
+2. Repair/Replace Classifier (replaces get_repair_decision() rules):
+   - GradientBoostingClassifier learns decision boundary from data.
+   - Features: same categorical columns + numerical excluding Labor_Hours
+     (since labor depends on the decision itself).
+   - 300 estimators, max_depth=4.
+
+3. Labor Hours Regressor (replaces LABOR_MAP lookup table):
+   - GradientBoostingRegressor predicts labor from features.
+   - Features: same categorical + numerical excluding Labor_Hours input.
+   - Replaces the fixed {minor:1, moderate:2.5, significant:4, severe:7} map.
+
+4. Data Pipeline:
+   - Reads same CSV format as v4.
+   - Drops low-importance features (Record_ID, Vehicle_Year, etc.).
+   - Derives repair/replace labels from Parts_Cost + Repair_Method if not
+     explicitly labelled in the data.
+   - Can optionally compare training distribution with inference log distributions.
+
+5. Outputs (5 artifacts in weights/):
+   - car_damage_cost_quantile_low_v5.joblib
+   - car_damage_cost_quantile_mid_v5.joblib
+   - car_damage_cost_quantile_high_v5.joblib
+   - car_damage_decision_v5.joblib
+   - car_damage_labor_v5.joblib
+   - car_damage_v5_metrics.json (evaluation metrics)
+
+STATUS: Training script complete but NOT integrated into production cost.py.
+Production still uses v4. Requires training data CSV to produce model files.

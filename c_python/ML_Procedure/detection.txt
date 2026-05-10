@@ -1,0 +1,20 @@
+detection.py - Damage Detection Router
+========================================
+
+PURPOSE:
+Thin routing layer that decides whether to use the real YOLOv8 model or a stub.
+
+WHAT IT DOES:
+
+1. run_detection(image_url):
+   - Checks if settings.model_path is configured.
+   - If yes: delegates to engine.run_yolo_detection() for real YOLO inference.
+   - If no: returns a stub result with has_damage=False and zero confidence.
+
+2. Stub Detection (_stub_detection):
+   - Returns a safe default when no model is loaded.
+   - Useful for development/testing without GPU or model weights.
+   - Returns: {has_damage: False, confidence: 0.0, detections: [], processed_image_url: <original URL>}
+
+This file exists to decouple the API layer (main.py) from the model loading decision.
+The API always calls run_detection(); this module handles the "is a model available?" check.
