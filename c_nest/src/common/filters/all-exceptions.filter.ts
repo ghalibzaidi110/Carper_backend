@@ -27,6 +27,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
         typeof exceptionResponse === 'string'
           ? exceptionResponse
           : (exceptionResponse as any).message || exceptionResponse;
+
+      // Log 4xx client errors so we can debug validation failures, etc.
+      if (status >= 400 && status < 500) {
+        this.logger.warn(
+          `HTTP ${status} ${request.method} ${request.url} -> ${JSON.stringify(message)}`,
+        );
+      }
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       message = 'Internal server error';

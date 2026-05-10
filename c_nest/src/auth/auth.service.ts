@@ -238,6 +238,7 @@ export class AuthService {
       phoneNumber: string;
       city: string;
       address: string;
+      country?: string;
       accountType: AccountType;
       businessName?: string;
       businessLicense?: string;
@@ -289,7 +290,7 @@ export class AuthService {
         phoneNumber: dto.phoneNumber,
         city: dto.city,
         address: dto.address,
-        country: 'Pakistan',
+        country: dto.country || 'Pakistan',
         accountType: dto.accountType,
         businessName: dto.businessName,
         businessLicense: dto.businessLicense,

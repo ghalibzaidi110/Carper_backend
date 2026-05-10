@@ -64,13 +64,13 @@ export class RegisterDto {
   @MinLength(2, { message: 'City must be at least 2 characters' })
   city: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: 'House 123, Street 5, DHA Phase 6',
-    description: 'Complete address'
+    description: 'Address (minimum 5 characters)'
   })
   @IsString()
   @IsNotEmpty({ message: 'Address is required' })
-  @MinLength(10, { message: 'Please provide a complete address (minimum 10 characters)' })
+  @MinLength(5, { message: 'Address must be at least 5 characters' })
   address: string;
 
   @ApiProperty({ 
@@ -166,13 +166,18 @@ export class CompleteGoogleSignupDto {
   @ApiProperty({ example: 'House 123, Street 5' })
   @IsString()
   @IsNotEmpty()
-  @MinLength(10)
+  @MinLength(5, { message: 'Address must be at least 5 characters' })
   address: string;
 
   @ApiProperty({ enum: AccountType })
   @IsEnum(AccountType)
   @IsNotEmpty()
   accountType: AccountType;
+
+  @ApiProperty({ example: 'Pakistan', required: false })
+  @IsString()
+  @IsOptional()
+  country?: string;
 
   @ApiProperty({ required: false })
   @IsString()

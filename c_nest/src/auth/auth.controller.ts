@@ -79,20 +79,37 @@ export class AuthController {
   @UseGuards(GoogleAuthCheckGuard, GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth callback' })
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const result = await this.authService.googleLogin(req.user as any);
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    // GoogleAuthGuard.handleRequest may have already redirected on failure.
+    if (res.headersSent || !req.user) return;
 
-    if (result.isNewUser) {
-      // New user - redirect to signup page with Google data
-      const googleData = encodeURIComponent(JSON.stringify(result.googleData));
-      res.redirect(
-        `${frontendUrl}/auth/signup?google=true&data=${googleData}`,
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    const stateRaw = (req.query?.state as string) || 'login';
+    const from: 'login' | 'register' = stateRaw === 'register' ? 'register' : 'login';
+
+    try {
+      const result = await this.authService.googleLogin(req.user as any);
+
+      if (result.isNewUser) {
+        // New user — redirect to signup completion page with Google data.
+        // `via=login` lets the signup page explain why a login attempt
+        // landed on a signup form ("no account found, please complete signup").
+        const googleData = encodeURIComponent(JSON.stringify(result.googleData));
+        return res.redirect(
+          `${frontendUrl}/auth/signup?google=true&data=${googleData}&via=${from}`,
+        );
+      }
+
+      // Existing user — issue tokens. `via=register` lets the callback page
+      // show "account already exists, signing you in" when the user tried to
+      // sign up with Google but already had an account.
+      const existing = result as { accessToken: string; refreshToken: string; isNewUser: false; user: any };
+      return res.redirect(
+        `${frontendUrl}/auth/callback?accessToken=${existing.accessToken}&refreshToken=${existing.refreshToken}&via=${from}`,
       );
-    } else {
-      // Existing user - redirect with tokens
-      const existingUserResult = result as { accessToken: string; refreshToken: string; isNewUser: false; user: any };
-      res.redirect(
-        `${frontendUrl}/auth/callback?accessToken=${existingUserResult.accessToken}&refreshToken=${existingUserResult.refreshToken}`,
+    } catch (err: any) {
+      const message = err?.message || 'Google sign-in failed. Please try again.';
+      return res.redirect(
+        `${frontendUrl}/auth/${from}?oauth_error=${encodeURIComponent(message)}`,
       );
     }
   }
@@ -106,11 +123,11 @@ export class AuthController {
   })
   async completeGoogleSignup(@Body() dto: CompleteGoogleSignupDto) {
     // Extract Google data and additional fields
-    const { googleId, email, fullName, avatarUrl, phoneNumber, city, address, accountType, businessName, businessLicense } = dto;
-    
+    const { googleId, email, fullName, avatarUrl, phoneNumber, city, address, country, accountType, businessName, businessLicense } = dto;
+
     return this.authService.completeGoogleSignup(
       { googleId, email, fullName, avatarUrl },
-      { phoneNumber, city, address, accountType, businessName, businessLicense },
+      { phoneNumber, city, address, country, accountType, businessName, businessLicense },
     );
   }
 
