@@ -20,6 +20,7 @@ models/
 # Each new training run bumps the version suffix and adds another exception.
 !weights/best.pt
 !weights/cost_estimation.v*.joblib
+!weights/car_damage_cost_regression_pipeline_v*.joblib
 
 # Model cards are tiny JSON sidecars — always track them
 !weights/*.json
