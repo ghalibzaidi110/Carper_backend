@@ -29,10 +29,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
           : (exceptionResponse as any).message || exceptionResponse;
 
       // Log 4xx client errors so we can debug validation failures, etc.
+      // Auth failures are usually part of normal token refresh / login flow.
       if (status >= 400 && status < 500) {
-        this.logger.warn(
-          `HTTP ${status} ${request.method} ${request.url} -> ${JSON.stringify(message)}`,
-        );
+        const logMessage = `HTTP ${status} ${request.method} ${request.url} -> ${JSON.stringify(message)}`;
+        if (
+          status === HttpStatus.UNAUTHORIZED ||
+          status === HttpStatus.FORBIDDEN
+        ) {
+          this.logger.debug(logMessage);
+        } else {
+          this.logger.warn(logMessage);
+        }
       }
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;

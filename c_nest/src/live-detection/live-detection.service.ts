@@ -109,7 +109,12 @@ export class LiveDetectionService {
       return { vendors: [], fallbackEstimate: null };
     }
 
-    const query = this.buildQuery(config, dto.panelLocation, dto.vehicle);
+    const query = this.buildQuery(
+      dto.damageType,
+      config,
+      dto.panelLocation,
+      dto.vehicle,
+    );
     const cacheKey = `${dto.damageType}|${query}`;
 
     const cached = this.cache.get(cacheKey);
@@ -142,8 +147,16 @@ export class LiveDetectionService {
 
       const data = response.data;
       if (data?.error) {
+        const result = this.makeFallback(config, data.error);
+
+        if (this.isNoResultsError(data.error)) {
+          this.logger.log(`SerpApi no results; using fallback estimate`);
+          this.cacheResult(cacheKey, result);
+          return result;
+        }
+
         this.logger.error(`SerpApi error: ${data.error}`);
-        return this.makeFallback(config, data.error);
+        return result;
       }
 
       const results: any[] = data?.shopping_results || [];
@@ -179,12 +192,7 @@ export class LiveDetectionService {
           ? { vendors, fallbackEstimate: null }
           : this.makeFallback(config, 'No priced products found');
 
-      // Bound the cache. Prune (TTL + size cap) once we hit the cap so
-      // a flood of unique queries can't grow the Map without limit.
-      if (this.cache.size >= this.CACHE_MAX_ENTRIES) {
-        this.pruneCache();
-      }
-      this.cache.set(cacheKey, { data: result, time: Date.now() });
+      this.cacheResult(cacheKey, result);
       return result;
     } catch (err: any) {
       this.logger.error(`Vendor search failed: ${err?.message ?? err}`);
@@ -193,21 +201,55 @@ export class LiveDetectionService {
   }
 
   private buildQuery(
+    damageType: VendorSearchDto['damageType'],
     config: SearchConfig,
     panelLocation?: string,
     vehicle?: VehicleDto,
   ): string {
     const panelPart = panelLocation ? PANEL_QUERY_MAP[panelLocation] || '' : '';
+    const partQuery = this.buildPartQuery(damageType, config, panelPart);
     return [
       vehicle?.year ?? '',
       vehicle?.make ?? '',
       vehicle?.model ?? '',
       panelPart,
-      config.query,
+      partQuery,
     ]
       .filter(Boolean)
       .join(' ')
       .trim();
+  }
+
+  private buildPartQuery(
+    damageType: VendorSearchDto['damageType'],
+    config: SearchConfig,
+    panelPart: string,
+  ): string {
+    if (damageType !== 'lamp_broken') {
+      return config.query;
+    }
+
+    if (panelPart) {
+      return 'assembly replacement price Pakistan';
+    }
+
+    return 'car light assembly replacement price Pakistan';
+  }
+
+  private isNoResultsError(error: unknown): boolean {
+    return (
+      typeof error === 'string' &&
+      /hasn'?t returned any results|no results/i.test(error)
+    );
+  }
+
+  private cacheResult(cacheKey: string, result: VendorSearchResult): void {
+    // Bound the cache. Prune (TTL + size cap) once we hit the cap so
+    // a flood of unique queries can't grow the Map without limit.
+    if (this.cache.size >= this.CACHE_MAX_ENTRIES) {
+      this.pruneCache();
+    }
+    this.cache.set(cacheKey, { data: result, time: Date.now() });
   }
 
   private makeFallback(config: SearchConfig | undefined, note: string): VendorSearchResult {
