@@ -8,6 +8,13 @@ pydantic>=2.5.0
 pydantic-settings>=2.1.0
 
 # YOLOv8 (yolov8n_balanced best.pt)
+# CPU-only torch keeps the deploy image small on hosts without GPUs
+# (Render web services, Fly machines, etc). Without this, pip pulls
+# nvidia-cublas/cudnn/cusparse wheels — several GB and unused on CPU,
+# bloating cold start past PaaS port-scan timeouts.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.2.0
+torchvision>=0.17.0
 ultralytics>=8.0.0,<9.0.0
 Pillow>=10.0.0
 opencv-python-headless>=4.8.0

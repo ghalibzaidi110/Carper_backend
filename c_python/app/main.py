@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, HttpUrl
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -26,37 +27,73 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+# Tracks background model-load state so /ready can report it. Lifespan
+# returns immediately after kicking off loads so uvicorn binds the port
+# right away — important for PaaS hosts (Render, Fly, Railway) whose
+# port scanners time out in ~60–90s while YOLO + sklearn pipelines can
+# take 60s+ to deserialize on cold-start.
+_load_state: dict[str, str] = {
+    "yolo": "pending",
+    "cost_a": "pending",
+    "cost_b": "pending",
+}
+
+
+async def _load_models_in_background() -> None:
     if settings.model_path:
         logger.info("Loading YOLO model from %s", settings.model_path)
+        _load_state["yolo"] = "loading"
         try:
             from app.engine import _load_model
             await asyncio.to_thread(_load_model)
+            _load_state["yolo"] = "ready"
         except Exception as e:
             logger.error("Failed to load YOLO model: %s", e)
-            raise
+            _load_state["yolo"] = f"error: {e}"
     else:
         logger.info("No MODEL_PATH set; using stub detection")
+        _load_state["yolo"] = "skipped"
 
     if settings.cost_model_path:
         logger.info("Loading cost model A from %s", settings.cost_model_path)
+        _load_state["cost_a"] = "loading"
         try:
             from app.cost import _load_cost_model
             await asyncio.to_thread(_load_cost_model)
+            _load_state["cost_a"] = "ready"
         except Exception as e:
             logger.error("Failed to load cost model A: %s", e)
-            # Don't raise — cost endpoint will surface the error if hit
+            _load_state["cost_a"] = f"error: {e}"
     else:
         logger.info("No COST_MODEL_PATH set; /cost-estimate will fail until configured")
+        _load_state["cost_a"] = "skipped"
 
     if settings.cost_model_b_path:
-        logger.info("Loading cost model B from %s (weight=%.2f)", settings.cost_model_b_path, settings.cost_model_b_weight)
+        logger.info(
+            "Loading cost model B from %s (weight=%.2f)",
+            settings.cost_model_b_path, settings.cost_model_b_weight,
+        )
+        _load_state["cost_b"] = "loading"
         try:
             from app.cost import _load_cost_model_b
             await asyncio.to_thread(_load_cost_model_b)
+            _load_state["cost_b"] = "ready"
         except Exception as e:
             logger.error("Failed to load cost model B: %s — A/B disabled", e)
+            _load_state["cost_b"] = f"error: {e}"
+    else:
+        _load_state["cost_b"] = "skipped"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Kick model loads into a background task and return immediately so
+    # uvicorn binds the port. /health stays 200 throughout; /ready flips
+    # to 200 only once all models are loaded. First request to /detect
+    # or /cost-estimate will block on the underlying load if it hasn't
+    # finished yet (the loaders are idempotent), so functionality is
+    # never lost — only the cold-start wait is deferred.
+    asyncio.create_task(_load_models_in_background())
 
     # Purge stale inference logs on startup
     from app.inference_logger import purge_old_logs
@@ -205,6 +242,22 @@ class CostEstimateResponse(BaseModel):
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "damage-detection"}
+
+
+@app.get("/ready")
+async def ready():
+    """Reports model load progress. 200 once all models that are
+    configured have finished loading (or were skipped); 503 while
+    any are still loading or errored. Use this for orchestration
+    readiness probes; use /health for plain liveness."""
+    not_ready = [
+        k for k, v in _load_state.items()
+        if v in ("pending", "loading") or v.startswith("error")
+    ]
+    return JSONResponse(
+        {"status": "ready" if not not_ready else "loading", "models": _load_state},
+        status_code=503 if not_ready else 200,
+    )
 
 
 @app.get("/metrics")
