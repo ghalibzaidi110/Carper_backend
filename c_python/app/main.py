@@ -268,8 +268,15 @@ async def metrics():
     return Response(content=body, media_type=content_type)
 
 
+# Note on rate limits: slowapi keys by remote IP, and Python is
+# server-to-server behind NestJS — so every request appears to come
+# from NestJS's single IP. NestJS already throttles per-user with
+# @nestjs/throttler, which is the meaningful gate. The limits here
+# are a fleet-wide stampede guard only, deliberately set well above
+# expected aggregate load so a normal multi-user session can't trip
+# them. Tighten if Python becomes directly reachable.
 @app.post("/detect", response_model=DetectResponse)
-@limiter.limit("20/minute")
+@limiter.limit("200/minute")
 async def detect(request: Request, body: DetectRequest):
     url = str(body.image_url)
     try:
@@ -293,7 +300,7 @@ async def detect(request: Request, body: DetectRequest):
 
 
 @app.post("/detect-upload", response_model=DetectResponse)
-@limiter.limit("20/minute")
+@limiter.limit("200/minute")
 async def detect_upload(request: Request, file: UploadFile = File(...)):
     """
     Run YOLO inference directly on uploaded image bytes — no URL download.
@@ -331,7 +338,7 @@ MAX_BATCH_SIZE = 10
 
 
 @app.post("/detect-batch")
-@limiter.limit("5/minute")
+@limiter.limit("50/minute")
 async def detect_batch(request: Request, body: DetectBatchRequest):
     """
     Run YOLO inference on multiple images. Max 10 per request.
@@ -372,7 +379,7 @@ async def detect_batch(request: Request, body: DetectBatchRequest):
 
 
 @app.post("/cost-estimate", response_model=CostEstimateResponse)
-@limiter.limit("60/minute")
+@limiter.limit("600/minute")
 async def cost_estimate(request: Request, body: CostEstimateRequest):
     """
     Predict repair cost in PKR for a single damage entry. Used by the
